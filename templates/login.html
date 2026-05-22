@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fibank — Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+
+    .login-page {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(21,101,192,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(21,101,192,0.08) 0%, transparent 50%),
+        var(--navy);
+    }
+
+    .login-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 2.5rem;
+    }
+    .login-logo .logo-icon {
+      width: 48px; height: 48px;
+      background: var(--blue);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; font-weight: 900; color: #fff;
+      box-shadow: 0 4px 16px rgba(21,101,192,0.4);
+    }
+    .login-logo .brand-text {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+    .login-logo .brand-accent { color: #42a5f5; }
+
+    .login-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+    }
+
+    .login-card h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.35rem;
+      text-align: center;
+    }
+    .login-card .login-subtitle {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .login-field { margin-bottom: 1.2rem; }
+    .login-field label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 6px;
+    }
+    .login-field input {
+      width: 100%;
+      background: #0a1520;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px 16px;
+      color: #fff;
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .login-field input:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(21,101,192,0.18);
+    }
+    .login-field input::placeholder { color: #3a5470; }
+
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #1565C0, #1976D2);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .login-btn:hover:not(:disabled) {
+      background: linear-gradient(135deg, #1976D2, #1E88E5);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(21,101,192,0.4);
+    }
+    .login-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .login-error {
+      display: none;
+      background: rgba(183,28,28,0.15);
+      border: 1px solid rgba(183,28,28,0.4);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #ef5350;
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-top: 1rem;
+      text-align: center;
+    }
+    .login-error.visible { display: block; animation: slideUp 0.2s ease; }
+
+    .login-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.5rem 0 1.2rem;
+    }
+
+    .login-forgot {
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .login-forgot a {
+      color: #42a5f5;
+      font-weight: 500;
+    }
+    .login-forgot a:hover { text-decoration: underline; }
+
+    .login-footer {
+      margin-top: 2.5rem;
+      text-align: center;
+      font-size: 0.75rem;
+      color: #3a5470;
+    }
+    .login-footer .tls-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid #1e3248;
+      border-radius: 20px;
+      padding: 5px 14px;
+      margin-bottom: 0.75rem;
+    }
+    .login-footer .tls-dot {
+      width: 7px; height: 7px;
+      background: var(--safe2);
+      border-radius: 50%;
+      box-shadow: 0 0 6px var(--safe2);
+    }
+    .login-footer p { line-height: 1.8; }
+  </style>
+</head>
+<body>
+
+<div class="login-page">
+
+  <!-- Logo -->
+  <div class="login-logo">
+    <div class="logo-icon">F</div>
+    <div class="brand-text">Fi<span class="brand-accent">bank</span></div>
+  </div>
+
+  <!-- Card -->
+  <div class="login-card">
+    <h1>Sign In to Your Account</h1>
+    <p class="login-subtitle">Enter your credentials to access online banking</p>
+
+    <div class="login-field">
+      <label>Username or IBAN</label>
+      <input type="text" id="username" placeholder="e.g. admin" autocomplete="username" spellcheck="false">
+    </div>
+
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Sign In</button>
+
+    <div class="login-error" id="login-error">
+      ✕ &nbsp;Invalid credentials. Please try again.
+    </div>
+
+    <hr class="login-divider">
+
+    <div class="login-forgot">
+      <a href="#">Forgot your password?</a> &nbsp;·&nbsp;
+      <a href="#">Need help?</a>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="login-footer">
+    <div class="tls-badge">
+      <span class="tls-dot"></span>
+      <span>256-bit TLS encryption</span>
+    </div>
+    <p>
+      Fibank SH.A · Reg. No. 123456789 · Tirana, Albania<br>
+      Licensed by the Bank of Albania · Member of the Deposit Guarantee Fund
+    </p>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+const usernameInput = document.getElementById('username');
+const passwordInput = document.getElementById('password');
+const loginBtn     = document.getElementById('login-btn');
+const loginError   = document.getElementById('login-error');
+
+// Allow Enter key on both fields
+[usernameInput, passwordInput].forEach(el => {
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+});
+
+// Clear error when user starts typing again
+[usernameInput, passwordInput].forEach(el => {
+  el.addEventListener('input', () => loginError.classList.remove('visible'));
+});
+
+async function doLogin() {
+  const username = usernameInput.value.trim();
+  const password = passwordInput.value;
+
+  if (!username || !password) {
+    loginError.textContent = '✕  Please enter your username and password.';
+    loginError.classList.add('visible');
+    return;
+  }
+
+  loginBtn.disabled = true;
+  loginBtn.textContent = 'Signing in…';
+  loginError.classList.remove('visible');
+
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      loginBtn.textContent = '✓ Authenticated';
+      loginBtn.style.background = 'linear-gradient(135deg, #2E7D32, #43A047)';
+      setTimeout(() => { window.location.href = '/dashboard'; }, 300);
+    } else {
+      loginError.textContent = '✕  Invalid credentials. Please try again.';
+      loginError.classList.add('visible');
+      passwordInput.value = '';
+      passwordInput.focus();
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Sign In';
+    }
+  } catch (e) {
+    loginError.textContent = '✕  Connection error. Please try again.';
+    loginError.classList.add('visible');
+    loginBtn.disabled = false;
+    loginBtn.textContent = 'Sign In';
+  }
+}
+</script>
+</body>
+</html>

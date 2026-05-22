@@ -17,8 +17,9 @@
     <span class="logo-text">Fi<span class="logo-accent">bank</span></span>
   </div>
   <div class="navbar-links">
-    <a href="/">Dashboard</a>
+    <a href="/dashboard">Dashboard</a>
     <a href="/profile" class="active">Profile</a>
+    <button class="btn-logout" onclick="doLogout()" title="Sign out">⎋ Sign Out</button>
   </div>
 </nav>
 
@@ -303,6 +304,12 @@ async function saveProfile() {
   } catch (e) {
     console.error('Save profile error:', e);
   }
+}
+
+/* ── Logout ── */
+async function doLogout() {
+  await fetch('/api/logout', { method: 'POST' }).catch(() => {});
+  window.location.href = '/';
 }
 
 /* ── Boot ── */

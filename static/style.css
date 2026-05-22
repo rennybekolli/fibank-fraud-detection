@@ -597,6 +597,335 @@ tbody tr:hover td { background: rgba(255,255,255,0.02); }
 .edit-form.visible { display: block; }
 .edit-form .form-group input { background: #0d1b2a; }
 
+/* ── Logout button ── */
+.btn-logout {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  margin-left: 4px;
+}
+.btn-logout:hover {
+  border-color: var(--danger2);
+  color: var(--danger2);
+  background: rgba(183,28,28,0.08);
+}
+
+/* ── Address book select ── */
+.recipient-select {
+  width: 100%;
+  background: #0d1b2a;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238ba4ba' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+}
+.recipient-select:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(21,101,192,0.15);
+}
+.recipient-select option { background: #0d1b2a; color: var(--text); }
+
+/* ── Sidebar ── */
+.sidebar {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: 220px;
+  background: #0a1520;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 200;
+  box-shadow: 2px 0 16px rgba(0,0,0,0.3);
+}
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 1.25rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-logo .logo-icon {
+  width: 34px; height: 34px;
+  background: var(--blue);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; font-weight: 900; color: #fff;
+  flex-shrink: 0;
+}
+.sidebar-logo .logo-text {
+  font-size: 1.25rem; font-weight: 800; color: var(--white); letter-spacing: -0.5px;
+}
+.sidebar-logo .logo-accent { color: #42a5f5; }
+
+.sidebar-nav {
+  flex: 1;
+  padding: 1rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: none;
+  transition: all 0.2s;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+}
+.sidebar-link:hover { color: var(--white); background: var(--navy3); text-decoration: none; }
+.sidebar-link.active { color: var(--white); background: rgba(21,101,192,0.2); border-left: 3px solid var(--blue); }
+.sidebar-link .sidebar-icon { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; }
+
+.sidebar-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.5rem 0.6rem;
+}
+.sidebar-logout {
+  padding: 1rem 0.6rem;
+  border-top: 1px solid var(--border);
+}
+
+.main-wrapper {
+  margin-left: 220px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+@media (max-width: 768px) {
+  .sidebar { transform: translateX(-100%); }
+  .main-wrapper { margin-left: 0; }
+}
+
+/* ── Clock in navbar ── */
+.tirana-clock {
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-family: 'Courier New', monospace;
+  background: var(--navy3);
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  letter-spacing: 0.5px;
+}
+.tirana-clock .clock-label {
+  font-size: 0.65rem;
+  color: #4a6075;
+  display: block;
+  font-family: inherit;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 1px;
+}
+.tirana-clock .clock-time {
+  color: #42a5f5;
+  font-weight: 700;
+}
+
+/* ── Toast notifications ── */
+.toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 9500;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+.toast {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  min-width: 240px;
+  max-width: 340px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  transform: translateX(120%);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease;
+  pointer-events: auto;
+}
+.toast.show { transform: translateX(0); opacity: 1; }
+.toast-success { border-left: 4px solid var(--safe2); }
+.toast-warn    { border-left: 4px solid var(--warn2); }
+.toast-error   { border-left: 4px solid var(--danger2); }
+.toast-info    { border-left: 4px solid #42a5f5; }
+.toast-icon    { font-size: 1.1rem; margin-right: 6px; }
+
+/* ── HIGH RISK Full-Screen Lockdown Overlay ── */
+.lockdown-screen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: radial-gradient(ellipse at 50% 30%, #4a0808 0%, #1a0202 50%, #080000 100%);
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 2rem;
+  text-align: center;
+  overflow: hidden;
+}
+.lockdown-screen.active { display: flex; }
+
+/* Pulsing red vignette */
+.lockdown-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(183,28,28,0.3) 100%);
+  animation: lockdown-pulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes lockdown-pulse {
+  0%,100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
+.lockdown-siren {
+  font-size: 5rem;
+  margin-bottom: 1rem;
+  animation: siren 0.8s ease infinite;
+  position: relative;
+  z-index: 1;
+}
+.lockdown-title {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #ef5350;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+  text-shadow: 0 0 40px rgba(239,83,80,0.5);
+  position: relative;
+  z-index: 1;
+}
+.lockdown-subtitle {
+  font-size: 0.9rem;
+  color: #c0a0a0;
+  max-width: 480px;
+  line-height: 1.7;
+  margin-bottom: 2rem;
+  position: relative;
+  z-index: 1;
+}
+.lockdown-box {
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(183,28,28,0.4);
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 440px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 0 60px rgba(183,28,28,0.2);
+}
+.lockdown-box p {
+  color: #a08080;
+  font-size: 0.85rem;
+  margin-bottom: 1.5rem;
+}
+.lockdown-fail-box {
+  background: rgba(183,28,28,0.15);
+  border: 1px solid rgba(183,28,28,0.4);
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-top: 1rem;
+}
+.lockdown-fail-box .fail-title {
+  font-weight: 700;
+  color: #ef5350;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+.lockdown-fail-box .fail-sub {
+  font-size: 0.82rem;
+  color: #8ba4ba;
+}
+
+/* ── Upload area (MEDIUM ID photo) ── */
+.upload-area {
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 1.2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: transparent;
+  position: relative;
+}
+.upload-area:hover { border-color: var(--blue); background: rgba(21,101,192,0.05); }
+.upload-area.has-file { border-color: var(--safe2); background: rgba(46,125,50,0.06); }
+.upload-area input[type=file] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+.upload-area .upload-icon { font-size: 1.5rem; display: block; margin-bottom: 4px; }
+.upload-area .upload-text { font-size: 0.8rem; color: var(--muted); }
+.upload-area .upload-text.active { color: var(--safe2); font-weight: 600; }
+
+/* ── Add recipient inline form ── */
+.add-recipient-form {
+  display: none;
+  background: rgba(21,101,192,0.06);
+  border: 1px solid rgba(21,101,192,0.2);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-top: 0.5rem;
+}
+.add-recipient-form.visible { display: block; }
+
+/* ── Button with inline spinner ── */
+.btn-loading {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.8;
+}
+.btn-spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--navy); }

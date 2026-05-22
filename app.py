@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 import joblib
 import numpy as np
-from flask import Flask, jsonify, render_template, request, session
+from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 
 warnings.filterwarnings("ignore")
 
@@ -42,43 +42,82 @@ def get_db():
     return conn
 
 
+SEED_TRANSACTIONS = lambda now: [
+    (1, 5000,   "Elton Hoxha",           "AL35 2021 1109 0000 0000 2356 8762",
+     (now - timedelta(days=3)).isoformat(),  1.2, "low",
+     json.dumps(["No anomalies detected"]), "completed"),
+    (1, 85000,  "Rinas Logistics SH.P.K", "AL47 2121 1009 0000 0000 1234 5678",
+     (now - timedelta(days=12)).isoformat(), 4.7, "medium",
+     json.dumps(["Timezone mismatch", "Neobank routing detected"]), "completed"),
+    (1, 210000, "Unknown Recipient",       "AL47 9999 0000 0000 0000 0000 0001",
+     (now - timedelta(days=30)).isoformat(), 8.9, "high",
+     json.dumps(["Virtual machine detected", "Remote access software detected",
+                 "Coached fraud indicators"]), "blocked"),
+]
+
+TXN_INSERT_SQL = (
+    "INSERT INTO transactions (user_id,amount,recipient_name,recipient_iban,"
+    "timestamp,risk_score,risk_level,triggered_signals,status) "
+    "VALUES (?,?,?,?,?,?,?,?,?)"
+)
+
+
 def init_db():
     conn = get_db()
     c = conn.cursor()
+
+    # ── users table (with password) ────────────────────────────────────────────
     c.execute("""CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY, name TEXT, iban TEXT,
-        balance REAL, location TEXT, account_age_days INTEGER
+        id INTEGER PRIMARY KEY, name TEXT, iban TEXT, balance REAL,
+        location TEXT, account_age_days INTEGER, password TEXT DEFAULT 'admin'
     )""")
+    # Migration: add password column to existing DBs that lack it
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN password TEXT DEFAULT 'admin'")
+    except Exception:
+        pass  # column already exists
+
+    # ── transactions table ─────────────────────────────────────────────────────
     c.execute("""CREATE TABLE IF NOT EXISTS transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER, amount REAL, recipient_name TEXT, recipient_iban TEXT,
         timestamp TEXT, risk_score REAL, risk_level TEXT,
         triggered_signals TEXT, status TEXT
     )""")
+
+    # ── saved_recipients table ─────────────────────────────────────────────────
+    c.execute("""CREATE TABLE IF NOT EXISTS saved_recipients (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER, name TEXT, iban TEXT
+    )""")
+
+    # ── Seed user ──────────────────────────────────────────────────────────────
     if not c.execute("SELECT 1 FROM users WHERE id=1").fetchone():
         c.execute(
-            "INSERT INTO users VALUES (1,'Ardi Berisha',"
-            "'AL47 2121 1009 0000 0002 3569 8741',450000,'Tirana, Albania',847)"
+            "INSERT INTO users (id,name,iban,balance,location,account_age_days,password) "
+            "VALUES (1,'Ardi Berisha','AL47 2121 1009 0000 0002 3569 8741',"
+            "450000,'Tirana, Albania',847,'admin')"
         )
-    if not c.execute("SELECT 1 FROM transactions WHERE user_id=1").fetchone():
-        now = datetime.now()
-        seed = [
-            (1, 5000, "Elton Hoxha", "AL35 2021 1109 0000 0000 2356 8762",
-             (now - timedelta(days=3)).isoformat(), 1.2, "low",
-             json.dumps(["No anomalies detected"]), "completed"),
-            (1, 85000, "Rinas Logistics SH.P.K", "AL47 2121 1009 0000 0000 1234 5678",
-             (now - timedelta(days=12)).isoformat(), 4.7, "medium",
-             json.dumps(["Timezone mismatch", "Neobank routing detected"]), "completed"),
-            (1, 210000, "Unknown Recipient", "AL47 9999 0000 0000 0000 0000 0001",
-             (now - timedelta(days=30)).isoformat(), 8.9, "high",
-             json.dumps(["Virtual machine detected", "Remote access software detected",
-                         "Coached fraud indicators"]), "blocked"),
-        ]
+    else:
+        # Ensure password is populated on existing rows
+        c.execute(
+            "UPDATE users SET password='admin' WHERE id=1 AND (password IS NULL OR password='')"
+        )
+
+    # ── Seed saved recipients ──────────────────────────────────────────────────
+    if not c.execute("SELECT 1 FROM saved_recipients WHERE user_id=1").fetchone():
         c.executemany(
-            "INSERT INTO transactions (user_id,amount,recipient_name,recipient_iban,"
-            "timestamp,risk_score,risk_level,triggered_signals,status) "
-            "VALUES (?,?,?,?,?,?,?,?,?)", seed
+            "INSERT INTO saved_recipients (user_id, name, iban) VALUES (?,?,?)",
+            [
+                (1, "Elton Hoxha",            "AL35 2021 1109 0000 0000 2356 8762"),
+                (1, "Rinas Logistics SH.P.K", "AL47 2121 1009 0000 0000 1234 5678"),
+            ]
         )
+
+    # ── Seed transactions ──────────────────────────────────────────────────────
+    if not c.execute("SELECT 1 FROM transactions WHERE user_id=1").fetchone():
+        c.executemany(TXN_INSERT_SQL, SEED_TRANSACTIONS(datetime.now()))
+
     conn.commit()
     conn.close()
 
@@ -222,6 +261,7 @@ def generate_explanation(risk_level, triggered_signals):
 
 
 def score_features(feats):
+    """Keep XGBoost for the 'features' payload shown on the Profile signal breakdown."""
     X = np.array([[feats[f] for f in FEATURE_ORDER]])
     prob = float(MODEL.predict_proba(X)[0][1])
     risk_score = round(prob * 10, 2)
@@ -234,6 +274,66 @@ def score_features(feats):
     return risk_score, risk_level
 
 
+def calculate_risk_score(feats, amount, sess_signals):
+    """
+    Deterministic rule-based fraud score (0.0 – 10.0).
+
+    Architecture:
+      BASE 1.0
+      + automated session additions (flat)
+      + MEDIUM-tier signal sum × 1.5
+      + HIGH-tier signal sum × 2.5
+      × amount scalar (if amount > 90 000 ALL)
+      → clamped [0, 10]
+
+    Scenario calibration:
+      S1 LOW  : all-safe defaults, 5 000 ALL  → ~1.0
+      S2 MED  : tz + neobank + no-hist + no-fido + mouse 0.65, 85 000 → ~4.3
+      S3 HIGH : mule + bot + screen + tension + tz + mouse/typing 0.9 → ~7.5
+    """
+    score = 1.0  # BASE
+
+    # ── Automated session signals ──────────────────────────────────────────────
+    if sess_signals.get("password_pasted"):   score += 0.5
+    if sess_signals.get("new_recipient"):     score += 0.5
+    if sess_signals.get("profile_updated"):   score += 0.5
+    if amount > 90_000:                       score += 1.0
+
+    # ── MEDIUM-tier manual signals (× 1.5) ────────────────────────────────────
+    m = 0.0
+    if feats["timezone_mismatch"]:                m += 0.50
+    if feats["is_neobank_routing"]:               m += 0.50
+    if not feats["is_historical_payee"]:          m += 0.50
+    if not feats["used_fido_passkey"]:            m += 0.30
+    if not feats["is_known_location"]:            m += 0.50
+    if feats["mouse_linearity_score"] > 0.5:      m += 0.40
+    if feats["typing_cadence_score"] > 0.5:       m += 0.40
+    score += m * 1.5
+
+    # ── HIGH-tier manual signals (× 2.5) ──────────────────────────────────────
+    h = 0.0
+    if feats["mule_potential"]:                   h += 0.50
+    if feats["bot_agility_index"]:                h += 0.50
+    if feats["is_screensharing_active"]:          h += 0.40
+    if feats["session_tension"]:                  h += 0.40
+    if feats["is_vm_or_emulator"]:                h += 0.40
+    if feats["remote_access_app_detected"]:       h += 0.40
+    if feats["is_in_active_call"]:                h += 0.30
+    if feats["coached_fraud_index"]:              h += 0.30
+    score += h * 2.5
+
+    # ── Amount scalar ──────────────────────────────────────────────────────────
+    if amount > 90_000:
+        score *= 1.15
+
+    return round(min(10.0, max(0.0, score)), 2)
+
+
+# ── Auth helper ────────────────────────────────────────────────────────────────
+def logged_in():
+    return bool(session.get("user_id"))
+
+
 # ── Middleware ─────────────────────────────────────────────────────────────────
 @app.before_request
 def ensure_login_time():
@@ -243,7 +343,16 @@ def ensure_login_time():
 
 # ── Page routes ────────────────────────────────────────────────────────────────
 @app.route("/")
-def index():
+def login_page():
+    if logged_in():
+        return redirect(url_for("dashboard"))
+    return render_template("login.html")
+
+
+@app.route("/dashboard")
+def dashboard():
+    if not logged_in():
+        return redirect(url_for("login_page"))
     return render_template("index.html")
 
 
@@ -254,6 +363,8 @@ def presenter():
 
 @app.route("/profile")
 def profile():
+    if not logged_in():
+        return redirect(url_for("login_page"))
     return render_template("profile.html")
 
 
@@ -284,7 +395,22 @@ def api_score():
     feats = build_feature_vector(data, conn)
     conn.close()
 
-    risk_score, risk_level = score_features(feats)
+    amount = float(data.get("amount", 10000))
+
+    # Rule-based deterministic score (primary — drives UI flow)
+    sess_signals = {
+        "password_pasted": session.get("password_pasted", 0),
+        "new_recipient":   session.get("new_recipient",   0),
+        "profile_updated": session.get("profile_updated", 0),
+    }
+    risk_score = calculate_risk_score(feats, amount, sess_signals)
+    if risk_score >= 7.0:
+        risk_level = "high"
+    elif risk_score >= 3.0:
+        risk_level = "medium"
+    else:
+        risk_level = "low"
+
     signals = triggered_signals_list(feats, ps)
     explanation = generate_explanation(risk_level, signals)
 
@@ -357,6 +483,7 @@ def api_reset_session():
     session.pop("presenter_signals", None)
     session.pop("profile_updated", None)
     session.pop("password_pasted", None)
+    session.pop("new_recipient", None)
     return jsonify({"success": True})
 
 
@@ -365,8 +492,89 @@ def api_session_status():
     return jsonify({
         "profile_updated": session.get("profile_updated", 0),
         "password_pasted": session.get("password_pasted", 0),
+        "new_recipient":   session.get("new_recipient",   0),
         "presenter_signals": presenter_signals(),
     })
+
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    data = request.get_json(force=True) or {}
+    username = data.get("username", "").strip().lower()
+    password = data.get("password", "").strip()
+
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE id=1").fetchone()
+    conn.close()
+
+    # Accept "admin", the user's full name, or their IBAN (spaces stripped)
+    valid = {
+        "admin",
+        user["name"].lower(),
+        user["iban"].replace(" ", "").lower(),
+    }
+    if username in valid and password == user["password"]:
+        session["user_id"] = 1
+        session["login_time"] = time.time()   # restart fraud timer on login
+        return jsonify({"success": True})
+
+    return jsonify({"success": False, "error": "Invalid credentials"}), 401
+
+
+@app.route("/api/logout", methods=["POST"])
+def api_logout():
+    session.clear()
+    return jsonify({"success": True})
+
+
+@app.route("/api/recipients/add", methods=["POST"])
+def api_recipients_add():
+    data = request.get_json(force=True) or {}
+    name = data.get("name", "").strip()
+    iban = data.get("iban", "").strip()
+    if not name or not iban:
+        return jsonify({"success": False, "error": "Name and IBAN required"}), 400
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO saved_recipients (user_id, name, iban) VALUES (1, ?, ?)", (name, iban)
+    )
+    row = dict(conn.execute(
+        "SELECT id, name, iban FROM saved_recipients WHERE user_id=1 ORDER BY id DESC LIMIT 1"
+    ).fetchone())
+    conn.commit()
+    conn.close()
+    session["new_recipient"] = 1
+    session.modified = True
+    return jsonify({"success": True, "recipient": row})
+
+
+@app.route("/api/recipients")
+def api_recipients():
+    conn = get_db()
+    rows = [dict(r) for r in conn.execute(
+        "SELECT id, name, iban FROM saved_recipients WHERE user_id=1 ORDER BY name"
+    ).fetchall()]
+    conn.close()
+    return jsonify({"recipients": rows})
+
+
+@app.route("/api/clear-history", methods=["POST"])
+def api_clear_history():
+    """Wipe all demo transactions and reset balance — presenter use only."""
+    conn = get_db()
+    conn.execute("DELETE FROM transactions WHERE user_id=1")
+    conn.executemany(TXN_INSERT_SQL, SEED_TRANSACTIONS(datetime.now()))
+    conn.execute("UPDATE users SET balance=450000, location='Tirana, Albania', name='Ardi Berisha' WHERE id=1")
+    conn.commit()
+    conn.close()
+
+    # Also wipe session state so the presenter gauge resets cleanly
+    session.pop("presenter_signals", None)
+    session.pop("profile_updated", None)
+    session.pop("password_pasted", None)
+    session.pop("new_recipient", None)
+
+    return jsonify({"success": True})
 
 
 if __name__ == "__main__":

@@ -19,18 +19,23 @@
 <!-- Quick scenario presets -->
 <div style="background:#08121c;border-bottom:1px solid #1a2d42;padding:0.6rem 1.5rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
   <span style="font-size:0.7rem;color:#8ba4ba;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Quick Scenarios:</span>
-  <button class="p-btn" style="background:#1a3a20;color:#66bb6a;padding:6px 16px;font-size:0.8rem;" onclick="setScenario(1)">✓ Scenario 1 — LOW</button>
-  <button class="p-btn" style="background:#3a2a08;color:#ffa726;padding:6px 16px;font-size:0.8rem;" onclick="setScenario(2)">⚠ Scenario 2 — MEDIUM</button>
-  <button class="p-btn" style="background:#3a0a0a;color:#ef5350;padding:6px 16px;font-size:0.8rem;" onclick="setScenario(3)">🔴 Scenario 3 — HIGH</button>
+  <button class="p-btn" style="background:#1a3a20;color:#66bb6a;padding:6px 16px;font-size:0.8rem;" onclick="setScenario(1)">✓ Scenario 1 — LOW (~1.0)</button>
+  <button class="p-btn" style="background:#3a2a08;color:#ffa726;padding:6px 16px;font-size:0.8rem;" onclick="setScenario(2)">⚠ Scenario 2 — MEDIUM (~4.3)</button>
+  <button class="p-btn" style="background:#3a0a0a;color:#ef5350;padding:6px 16px;font-size:0.8rem;" onclick="setScenario(3)">🔴 Scenario 3 — HIGH (~7.5)</button>
   <span style="font-size:0.72rem;color:#4a6075;margin-left:0.5rem;">Each button sets + applies signals automatically</span>
+</div>
+
+<!-- Score formula reference -->
+<div style="background:#060d14;border-bottom:1px solid #1a2d42;padding:0.5rem 1.5rem;font-size:0.7rem;color:#4a6075;font-family:monospace;letter-spacing:0.3px;">
+  score = 1.0 [base] + {pwd_paste +0.5, new_recip +0.5, profile_upd +0.5, amt&gt;90k +1.0} + MEDIUM×1.5 + HIGH×2.5 → ×1.15 if amt&gt;90k → clamp[0,10]
 </div>
 
 <!-- Signal columns -->
 <div class="presenter-grid">
 
-  <!-- LEFT: LOW RISK SIGNALS -->
+  <!-- LEFT: LOW / BASELINE SIGNALS -->
   <div class="p-panel">
-    <div class="p-panel-header p-header-low">✓ Low Risk Signals</div>
+    <div class="p-panel-header p-header-low">✓ Baseline (Low-Risk) Signals</div>
 
     <div class="toggle-row">
       <span class="toggle-label">Historical Payee</span>
@@ -66,49 +71,40 @@
       </select>
     </div>
 
-    <div class="indicator-row" style="margin-top:0.8rem;">
-      <span class="toggle-label" style="color:#8ba4ba;font-size:0.78rem;">Profile edited (auto-detected)</span>
-      <span class="indicator-dot" id="ind-profile"></span>
-    </div>
+    <div style="margin-top:1rem;padding-top:0.8rem;border-top:1px solid #1a2d42;">
+      <div style="font-size:0.65rem;color:#4a6075;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.6rem;font-weight:700;">Auto-Detected (read-only)</div>
 
-    <div class="indicator-row">
-      <span class="toggle-label" style="color:#8ba4ba;font-size:0.78rem;">Password pasted (auto-detected)</span>
-      <span class="indicator-dot" id="ind-paste"></span>
+      <div class="indicator-row">
+        <span class="toggle-label" style="color:#8ba4ba;font-size:0.78rem;">Profile edited this session</span>
+        <span class="indicator-dot" id="ind-profile"></span>
+      </div>
+
+      <div class="indicator-row">
+        <span class="toggle-label" style="color:#8ba4ba;font-size:0.78rem;">Password pasted</span>
+        <span class="indicator-dot" id="ind-paste"></span>
+      </div>
+
+      <div class="indicator-row">
+        <span class="toggle-label" style="color:#8ba4ba;font-size:0.78rem;">New recipient added</span>
+        <span class="indicator-dot" id="ind-newrecip"></span>
+      </div>
     </div>
   </div>
 
-  <!-- MIDDLE: MEDIUM RISK SIGNALS -->
+  <!-- MIDDLE: MEDIUM RISK SIGNALS (× 1.5 each) -->
   <div class="p-panel">
-    <div class="p-panel-header p-header-medium">⚠ Medium Risk Signals</div>
+    <div class="p-panel-header p-header-medium">⚠ Medium Signals <span style="opacity:0.6;font-weight:400;">× 1.5</span></div>
 
     <div class="toggle-row">
-      <span class="toggle-label">Timezone Mismatch</span>
+      <span class="toggle-label">Timezone Mismatch <span style="color:#4a6075;font-size:0.7rem;">(+0.75)</span></span>
       <label class="toggle-switch">
         <input type="checkbox" id="timezone_mismatch">
         <span class="toggle-slider"></span>
       </label>
     </div>
 
-    <div class="slider-row">
-      <label>
-        Mouse Linearity Score
-        <span class="slider-val" id="mouse_val">0.1</span>
-      </label>
-      <input type="range" id="mouse_linearity_score" min="0" max="1" step="0.05" value="0.1"
-             oninput="document.getElementById('mouse_val').textContent = parseFloat(this.value).toFixed(2)">
-    </div>
-
-    <div class="slider-row">
-      <label>
-        Typing Cadence Score
-        <span class="slider-val" id="typing_val">0.1</span>
-      </label>
-      <input type="range" id="typing_cadence_score" min="0" max="1" step="0.05" value="0.1"
-             oninput="document.getElementById('typing_val').textContent = parseFloat(this.value).toFixed(2)">
-    </div>
-
     <div class="toggle-row">
-      <span class="toggle-label">Neobank Routing</span>
+      <span class="toggle-label">Neobank Routing <span style="color:#4a6075;font-size:0.7rem;">(+0.75)</span></span>
       <label class="toggle-switch">
         <input type="checkbox" id="is_neobank_routing">
         <span class="toggle-slider"></span>
@@ -116,44 +112,56 @@
     </div>
 
     <div class="toggle-row">
-      <span class="toggle-label">Mule Potential</span>
-      <label class="toggle-switch">
+      <span class="toggle-label">Unknown Payee <span style="color:#4a6075;font-size:0.7rem;">(+0.75)</span></span>
+      <label class="toggle-switch" title="Turns off 'Historical Payee'">
+        <input type="checkbox" id="is_unknown_payee_toggle" onchange="syncUnknownPayee(this)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <span class="toggle-label">No FIDO Passkey <span style="color:#4a6075;font-size:0.7rem;">(+0.45)</span></span>
+      <label class="toggle-switch" title="Turns off 'FIDO Passkey Used'">
+        <input type="checkbox" id="no_fido_toggle" onchange="syncNoFido(this)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="slider-row">
+      <label>
+        Mouse Linearity Score
+        <span class="slider-val" id="mouse_val">0.10</span>
+      </label>
+      <input type="range" id="mouse_linearity_score" min="0" max="1" step="0.05" value="0.1"
+             oninput="document.getElementById('mouse_val').textContent = parseFloat(this.value).toFixed(2)">
+      <div style="font-size:0.68rem;color:#4a6075;margin-top:2px;">&gt;0.5 adds +0.60 to score</div>
+    </div>
+
+    <div class="slider-row">
+      <label>
+        Typing Cadence Score
+        <span class="slider-val" id="typing_val">0.10</span>
+      </label>
+      <input type="range" id="typing_cadence_score" min="0" max="1" step="0.05" value="0.1"
+             oninput="document.getElementById('typing_val').textContent = parseFloat(this.value).toFixed(2)">
+      <div style="font-size:0.68rem;color:#4a6075;margin-top:2px;">&gt;0.5 adds +0.60 to score</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: HIGH RISK SIGNALS (× 2.5 each) -->
+  <div class="p-panel">
+    <div class="p-panel-header p-header-high">🔴 High Signals <span style="opacity:0.6;font-weight:400;">× 2.5</span></div>
+
+    <div class="toggle-row">
+      <span class="toggle-label">Mule Potential <span style="color:#4a6075;font-size:0.7rem;">(+1.25)</span></span>
+      <label class="toggle-switch danger">
         <input type="checkbox" id="mule_potential">
         <span class="toggle-slider"></span>
       </label>
     </div>
 
     <div class="toggle-row">
-      <span class="toggle-label">Session Tension</span>
-      <label class="toggle-switch">
-        <input type="checkbox" id="session_tension">
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-  </div>
-
-  <!-- RIGHT: HIGH RISK SIGNALS -->
-  <div class="p-panel">
-    <div class="p-panel-header p-header-high">🔴 High Risk Signals</div>
-
-    <div class="toggle-row">
-      <span class="toggle-label">VM / Emulator</span>
-      <label class="toggle-switch danger">
-        <input type="checkbox" id="is_vm_or_emulator">
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-
-    <div class="toggle-row">
-      <span class="toggle-label">Webdriver Detected</span>
-      <label class="toggle-switch danger">
-        <input type="checkbox" id="webdriver_detected">
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-
-    <div class="toggle-row">
-      <span class="toggle-label">Bot Agility Index</span>
+      <span class="toggle-label">Bot Agility Index <span style="color:#4a6075;font-size:0.7rem;">(+1.25)</span></span>
       <label class="toggle-switch danger">
         <input type="checkbox" id="bot_agility_index">
         <span class="toggle-slider"></span>
@@ -161,15 +169,7 @@
     </div>
 
     <div class="toggle-row">
-      <span class="toggle-label">SCAMMER ON CALL 📞</span>
-      <label class="toggle-switch danger">
-        <input type="checkbox" id="is_in_active_call">
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-
-    <div class="toggle-row">
-      <span class="toggle-label">SCREEN SHARING ACTIVE 🖥</span>
+      <span class="toggle-label">SCREEN SHARING ACTIVE 🖥 <span style="color:#4a6075;font-size:0.7rem;">(+1.00)</span></span>
       <label class="toggle-switch danger">
         <input type="checkbox" id="is_screensharing_active">
         <span class="toggle-slider"></span>
@@ -177,7 +177,23 @@
     </div>
 
     <div class="toggle-row">
-      <span class="toggle-label">Remote Access App</span>
+      <span class="toggle-label">Session Tension <span style="color:#4a6075;font-size:0.7rem;">(+1.00)</span></span>
+      <label class="toggle-switch danger">
+        <input type="checkbox" id="session_tension">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <span class="toggle-label">VM / Emulator <span style="color:#4a6075;font-size:0.7rem;">(+1.00)</span></span>
+      <label class="toggle-switch danger">
+        <input type="checkbox" id="is_vm_or_emulator">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <span class="toggle-label">Remote Access App <span style="color:#4a6075;font-size:0.7rem;">(+1.00)</span></span>
       <label class="toggle-switch danger">
         <input type="checkbox" id="remote_access_app_detected">
         <span class="toggle-slider"></span>
@@ -185,12 +201,23 @@
     </div>
 
     <div class="toggle-row">
-      <span class="toggle-label">⚠ COACHED FRAUD — INSTANT LOCKDOWN</span>
+      <span class="toggle-label">SCAMMER ON CALL 📞 <span style="color:#4a6075;font-size:0.7rem;">(+0.75)</span></span>
+      <label class="toggle-switch danger">
+        <input type="checkbox" id="is_in_active_call">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <span class="toggle-label">Coached Fraud Index <span style="color:#4a6075;font-size:0.7rem;">(+0.75)</span></span>
       <label class="toggle-switch danger">
         <input type="checkbox" id="coached_fraud_index">
         <span class="toggle-slider"></span>
       </label>
     </div>
+
+    <!-- webdriver_detected is a hidden field — kept in DOM for getSignals() -->
+    <input type="hidden" id="webdriver_detected" value="0">
   </div>
 
 </div>
@@ -201,7 +228,10 @@
     ▶ Apply Signals to User Session
   </button>
   <button class="p-btn p-btn-reset" onclick="resetSession()">
-    ↺ Reset All to Default
+    ↺ Reset All Signals
+  </button>
+  <button class="p-btn" style="background:#3a0a0a;color:#ef5350;border:1px solid rgba(183,28,28,0.4);" onclick="clearHistory()">
+    🗑 Wipe Demo Data
   </button>
 
   <div class="presenter-gauge">
@@ -223,71 +253,84 @@
 <script>
 'use strict';
 
+/* ── Helper toggles (virtual — sync with the real underlying checkboxes) ── */
+function syncUnknownPayee(cb) {
+  document.getElementById('is_historical_payee').checked = !cb.checked;
+}
+function syncNoFido(cb) {
+  document.getElementById('used_fido_passkey').checked = !cb.checked;
+}
+
+/* ── Scenario presets ── */
 async function setScenario(n) {
-  // Reset all first
-  document.getElementById('is_historical_payee').checked = true;
-  document.getElementById('is_known_location').checked = true;
-  document.getElementById('used_fido_passkey').checked = true;
-  document.getElementById('ip_asn_type').value = 'residential';
-  document.getElementById('timezone_mismatch').checked = false;
-  document.getElementById('mouse_linearity_score').value = 0.1;
-  document.getElementById('typing_cadence_score').value = 0.1;
-  document.getElementById('mouse_val').textContent = '0.10';
-  document.getElementById('typing_val').textContent = '0.10';
-  document.getElementById('is_neobank_routing').checked = false;
-  document.getElementById('mule_potential').checked = false;
-  document.getElementById('session_tension').checked = false;
-  document.getElementById('is_vm_or_emulator').checked = false;
-  document.getElementById('webdriver_detected').checked = false;
-  document.getElementById('bot_agility_index').checked = false;
-  document.getElementById('is_in_active_call').checked = false;
-  document.getElementById('is_screensharing_active').checked = false;
+  // Reset all to safe defaults
+  document.getElementById('is_historical_payee').checked      = true;
+  document.getElementById('is_known_location').checked        = true;
+  document.getElementById('used_fido_passkey').checked        = true;
+  document.getElementById('ip_asn_type').value                = 'residential';
+  document.getElementById('timezone_mismatch').checked        = false;
+  document.getElementById('is_neobank_routing').checked       = false;
+  document.getElementById('mouse_linearity_score').value      = 0.1;
+  document.getElementById('typing_cadence_score').value       = 0.1;
+  document.getElementById('mouse_val').textContent            = '0.10';
+  document.getElementById('typing_val').textContent           = '0.10';
+  document.getElementById('mule_potential').checked           = false;
+  document.getElementById('bot_agility_index').checked        = false;
+  document.getElementById('is_screensharing_active').checked  = false;
+  document.getElementById('session_tension').checked          = false;
+  document.getElementById('is_vm_or_emulator').checked        = false;
   document.getElementById('remote_access_app_detected').checked = false;
-  document.getElementById('coached_fraud_index').checked = false;
+  document.getElementById('is_in_active_call').checked        = false;
+  document.getElementById('coached_fraud_index').checked      = false;
+  // Sync virtual toggles
+  document.getElementById('is_unknown_payee_toggle').checked  = false;
+  document.getElementById('no_fido_toggle').checked           = false;
 
   if (n === 2) {
-    // MEDIUM ~3.6–4.2: hist=off, fido=off, timezone, neobank, mouse=0.65
-    document.getElementById('is_historical_payee').checked = false;
-    document.getElementById('used_fido_passkey').checked = false;
-    document.getElementById('timezone_mismatch').checked = true;
-    document.getElementById('is_neobank_routing').checked = true;
-    document.getElementById('mouse_linearity_score').value = 0.65;
-    document.getElementById('mouse_val').textContent = '0.65';
+    // MEDIUM ~4.3: hist=off, fido=off, tz, neobank, mouse=0.65
+    document.getElementById('is_historical_payee').checked    = false;
+    document.getElementById('used_fido_passkey').checked      = false;
+    document.getElementById('timezone_mismatch').checked      = true;
+    document.getElementById('is_neobank_routing').checked     = true;
+    document.getElementById('mouse_linearity_score').value    = 0.65;
+    document.getElementById('mouse_val').textContent          = '0.65';
+    document.getElementById('is_unknown_payee_toggle').checked = true;
+    document.getElementById('no_fido_toggle').checked          = true;
   } else if (n === 3) {
-    // HIGH ~7.1–7.6: mule + bot + screensharing + mouse=0.9 + tz + typing=0.9 + tension
-    document.getElementById('mule_potential').checked = true;
-    document.getElementById('bot_agility_index').checked = true;
+    // HIGH ~7.5: mule + bot + screensharing + tension + tz + mouse/typing=0.9
+    document.getElementById('mule_potential').checked          = true;
+    document.getElementById('bot_agility_index').checked       = true;
     document.getElementById('is_screensharing_active').checked = true;
-    document.getElementById('timezone_mismatch').checked = true;
-    document.getElementById('session_tension').checked = true;
-    document.getElementById('mouse_linearity_score').value = 0.9;
-    document.getElementById('mouse_val').textContent = '0.90';
-    document.getElementById('typing_cadence_score').value = 0.9;
-    document.getElementById('typing_val').textContent = '0.90';
+    document.getElementById('session_tension').checked         = true;
+    document.getElementById('timezone_mismatch').checked       = true;
+    document.getElementById('mouse_linearity_score').value     = 0.9;
+    document.getElementById('mouse_val').textContent           = '0.90';
+    document.getElementById('typing_cadence_score').value      = 0.9;
+    document.getElementById('typing_val').textContent          = '0.90';
   }
-  // Auto-apply
+
   await applySignals();
 }
 
 function getSignals() {
   return {
-    is_historical_payee:     document.getElementById('is_historical_payee').checked ? 1 : 0,
-    is_known_location:       document.getElementById('is_known_location').checked ? 1 : 0,
-    used_fido_passkey:       document.getElementById('used_fido_passkey').checked ? 1 : 0,
-    ip_asn_type:             document.getElementById('ip_asn_type').value,
-    timezone_mismatch:       document.getElementById('timezone_mismatch').checked ? 1 : 0,
-    mouse_linearity_score:   parseFloat(document.getElementById('mouse_linearity_score').value),
-    typing_cadence_score:    parseFloat(document.getElementById('typing_cadence_score').value),
-    is_neobank_routing:      document.getElementById('is_neobank_routing').checked ? 1 : 0,
-    mule_potential:          document.getElementById('mule_potential').checked ? 1 : 0,
-    session_tension:         document.getElementById('session_tension').checked ? 1 : 0,
-    is_vm_or_emulator:       document.getElementById('is_vm_or_emulator').checked ? 1 : 0,
-    webdriver_detected:      document.getElementById('webdriver_detected').checked ? 1 : 0,
-    bot_agility_index:       document.getElementById('bot_agility_index').checked ? 1 : 0,
-    is_in_active_call:       document.getElementById('is_in_active_call').checked ? 1 : 0,
-    is_screensharing_active: document.getElementById('is_screensharing_active').checked ? 1 : 0,
+    is_historical_payee:        document.getElementById('is_historical_payee').checked    ? 1 : 0,
+    is_known_location:          document.getElementById('is_known_location').checked       ? 1 : 0,
+    used_fido_passkey:          document.getElementById('used_fido_passkey').checked       ? 1 : 0,
+    ip_asn_type:                document.getElementById('ip_asn_type').value,
+    timezone_mismatch:          document.getElementById('timezone_mismatch').checked       ? 1 : 0,
+    mouse_linearity_score:      parseFloat(document.getElementById('mouse_linearity_score').value),
+    typing_cadence_score:       parseFloat(document.getElementById('typing_cadence_score').value),
+    is_neobank_routing:         document.getElementById('is_neobank_routing').checked      ? 1 : 0,
+    mule_potential:             document.getElementById('mule_potential').checked           ? 1 : 0,
+    session_tension:            document.getElementById('session_tension').checked          ? 1 : 0,
+    is_vm_or_emulator:          document.getElementById('is_vm_or_emulator').checked       ? 1 : 0,
+    webdriver_detected:         0,
+    bot_agility_index:          document.getElementById('bot_agility_index').checked       ? 1 : 0,
+    is_in_active_call:          document.getElementById('is_in_active_call').checked       ? 1 : 0,
+    is_screensharing_active:    document.getElementById('is_screensharing_active').checked ? 1 : 0,
     remote_access_app_detected: document.getElementById('remote_access_app_detected').checked ? 1 : 0,
-    coached_fraud_index:     document.getElementById('coached_fraud_index').checked ? 1 : 0,
+    coached_fraud_index:        document.getElementById('coached_fraud_index').checked     ? 1 : 0,
   };
 }
 
@@ -310,94 +353,75 @@ async function applySignals() {
 }
 
 async function resetSession() {
-  try {
-    await fetch('/api/reset-session');
-  } catch (e) { console.error(e); }
-
-  // Reset all controls to defaults
-  document.getElementById('is_historical_payee').checked = true;
-  document.getElementById('is_known_location').checked = true;
-  document.getElementById('used_fido_passkey').checked = true;
-  document.getElementById('ip_asn_type').value = 'residential';
-  document.getElementById('timezone_mismatch').checked = false;
-  document.getElementById('mouse_linearity_score').value = 0.1;
-  document.getElementById('typing_cadence_score').value = 0.1;
-  document.getElementById('mouse_val').textContent = '0.10';
-  document.getElementById('typing_val').textContent = '0.10';
-  document.getElementById('is_neobank_routing').checked = false;
-  document.getElementById('mule_potential').checked = false;
-  document.getElementById('session_tension').checked = false;
-  document.getElementById('is_vm_or_emulator').checked = false;
-  document.getElementById('webdriver_detected').checked = false;
-  document.getElementById('bot_agility_index').checked = false;
-  document.getElementById('is_in_active_call').checked = false;
-  document.getElementById('is_screensharing_active').checked = false;
-  document.getElementById('remote_access_app_detected').checked = false;
-  document.getElementById('coached_fraud_index').checked = false;
-
-  updateGauge(0);
+  try { await fetch('/api/reset-session'); } catch (e) { console.error(e); }
+  await setScenario(1);   // reset controls + re-apply defaults
 }
 
 /* ── Gauge ── */
 function updateGauge(score) {
-  const circumference = Math.PI * 80; // 251.33
+  const circumference = Math.PI * 80;
   const offset = circumference * (1 - Math.min(score, 10) / 10);
-
   const fill = document.getElementById('p-gauge-fill');
   fill.style.strokeDashoffset = offset;
 
-  let color, badgeClass, badgeLabel;
-  if (score >= 7) {
-    color = '#ef5350'; badgeClass = 'badge-high'; badgeLabel = 'HIGH';
-  } else if (score >= 3) {
-    color = '#ffa726'; badgeClass = 'badge-medium'; badgeLabel = 'MEDIUM';
-  } else {
-    color = '#66bb6a'; badgeClass = 'badge-low'; badgeLabel = 'LOW';
-  }
-  fill.style.stroke = color;
+  let color, cls, label;
+  if (score >= 7)      { color = '#ef5350'; cls = 'badge-high';   label = 'HIGH'; }
+  else if (score >= 3) { color = '#ffa726'; cls = 'badge-medium'; label = 'MEDIUM'; }
+  else                 { color = '#66bb6a'; cls = 'badge-low';    label = 'LOW'; }
 
-  document.getElementById('p-gauge-score').textContent = score.toFixed(1);
-  document.getElementById('p-gauge-score').style.fill = color;
+  fill.style.stroke = color;
+  const scoreEl = document.getElementById('p-gauge-score');
+  scoreEl.textContent = score.toFixed(1);
+  scoreEl.style.fill  = color;
 
   const badge = document.getElementById('p-risk-badge');
-  badge.textContent = badgeLabel;
-  badge.className = `badge ${badgeClass}`;
+  badge.textContent = label;
+  badge.className = `badge ${cls}`;
 }
 
-/* ── Poll for live score & indicators ── */
+/* ── Polling ── */
 async function pollScore() {
   try {
-    const res = await fetch('/api/score', {
+    const res  = await fetch('/api/score', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount: 50000 }),
     });
     const data = await res.json();
     updateGauge(data.risk_score);
-  } catch (e) { /* silent */ }
+  } catch { /* silent */ }
 }
 
 async function pollIndicators() {
   try {
-    const res = await fetch('/api/session-status');
+    const res  = await fetch('/api/session-status');
     const data = await res.json();
-
-    const indProfile = document.getElementById('ind-profile');
-    const indPaste = document.getElementById('ind-paste');
-
-    if (data.profile_updated) indProfile.classList.add('active');
-    else indProfile.classList.remove('active');
-
-    if (data.password_pasted) indPaste.classList.add('active');
-    else indPaste.classList.remove('active');
-  } catch (e) { /* silent */ }
+    toggle('ind-profile',  data.profile_updated);
+    toggle('ind-paste',    data.password_pasted);
+    toggle('ind-newrecip', data.new_recipient);
+  } catch { /* silent */ }
 }
 
-// Poll every 2 seconds
+function toggle(id, active) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('active', !!active);
+}
+
+async function clearHistory() {
+  if (!confirm('Wipe all demo transactions and reset balance to 450,000 ALL?')) return;
+  try {
+    await fetch('/api/clear-history', { method: 'POST' });
+    alert('✓ Demo data wiped. Balance restored. Seeded transactions reinstated.');
+    await resetSession();
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
+}
+
+// Poll every 2 s
 setInterval(pollScore, 2000);
 setInterval(pollIndicators, 2000);
-
-// Initial polls
 pollScore();
 pollIndicators();
 </script>
