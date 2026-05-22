@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fibank — Profile</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="navbar-brand">
+    <div class="logo-icon">F</div>
+    <span class="logo-text">Fi<span class="logo-accent">bank</span></span>
+  </div>
+  <div class="navbar-links">
+    <a href="/">Dashboard</a>
+    <a href="/profile" class="active">Profile</a>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-title">Account Profile</div>
+
+  <div class="profile-grid">
+
+    <!-- LEFT: User info -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:1.2rem;">Personal Information</div>
+
+      <div class="profile-field">
+        <label>Full Name</label>
+        <div class="value" id="p-name">—</div>
+      </div>
+      <div class="profile-field">
+        <label>IBAN</label>
+        <div class="iban" id="p-iban">—</div>
+      </div>
+      <div class="profile-field">
+        <label>Location</label>
+        <div class="value" id="p-location">—</div>
+      </div>
+      <div class="profile-field">
+        <label>Account Age</label>
+        <div class="value" id="p-age">—</div>
+      </div>
+
+      <button class="btn btn-primary btn-sm" id="edit-btn" onclick="toggleEdit()" style="margin-top:0.5rem;">
+        Edit Profile
+      </button>
+
+      <div class="edit-form" id="edit-form" style="margin-top:1rem;">
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" id="edit-name" placeholder="Full name">
+        </div>
+        <div class="form-group">
+          <label>Location</label>
+          <input type="text" id="edit-location" placeholder="City, Country">
+        </div>
+        <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
+          <button class="btn btn-success btn-sm" onclick="saveProfile()">Save Changes</button>
+          <button class="btn btn-sm" style="background:#1e3248;color:#8ba4ba;" onclick="toggleEdit()">Cancel</button>
+        </div>
+        <div id="save-msg" style="display:none;color:var(--safe2);font-size:0.82rem;margin-top:8px;">
+          ✓ Profile updated successfully
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Live Risk Intelligence -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:1rem;">Live Risk Intelligence</div>
+
+      <!-- Gauge -->
+      <div class="gauge-wrap" style="margin-bottom:1rem;">
+        <svg class="gauge-svg" viewBox="0 0 200 120">
+          <path class="gauge-arc-bg" d="M 20 100 A 80 80 0 0 1 180 100"/>
+          <path class="gauge-arc-fill" id="gauge-fill" d="M 20 100 A 80 80 0 0 1 180 100"/>
+          <text class="gauge-score-text" id="gauge-score" x="100" y="96" text-anchor="middle">—</text>
+          <text class="gauge-label-text" x="100" y="112" text-anchor="middle">RISK SCORE</text>
+        </svg>
+        <div>
+          <span class="gauge-level-badge badge badge-low" id="gauge-level-badge">—</span>
+        </div>
+      </div>
+
+      <!-- Signal breakdown -->
+      <div class="card-title" style="margin-bottom:0.5rem;">Signal Breakdown</div>
+      <ul class="signal-list" id="signal-list">
+        <li class="signal-item" style="color:var(--muted);">Loading signals…</li>
+      </ul>
+
+      <button class="btn btn-primary btn-sm btn-full" style="margin-top:1rem;" onclick="refreshRisk()">
+        ↻ Refresh Risk Score
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Transaction history -->
+  <div class="card">
+    <div class="card-title" style="margin-bottom:1rem;">Transaction History</div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Recipient</th>
+            <th>IBAN</th>
+            <th>Amount (ALL)</th>
+            <th>Date</th>
+            <th>Risk Score</th>
+            <th>Risk Level</th>
+            <th>Status</th>
+            <th>Signals</th>
+          </tr>
+        </thead>
+        <tbody id="profile-txn-body">
+          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:2rem;">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+function formatALL(n) {
+  return Number(n).toLocaleString('sq-AL');
+}
+function formatDate(iso) {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  } catch { return iso; }
+}
+
+/* ── Gauge ── */
+function updateGauge(score) {
+  const circumference = Math.PI * 80;
+  const offset = circumference * (1 - Math.min(score, 10) / 10);
+  const fill = document.getElementById('gauge-fill');
+  fill.style.strokeDashoffset = offset;
+
+  let color, cls, label;
+  if (score >= 7)      { color = '#ef5350'; cls = 'badge-high';   label = 'HIGH'; }
+  else if (score >= 3) { color = '#ffa726'; cls = 'badge-medium'; label = 'MEDIUM'; }
+  else                 { color = '#66bb6a'; cls = 'badge-low';    label = 'LOW'; }
+
+  fill.style.stroke = color;
+  const scoreEl = document.getElementById('gauge-score');
+  scoreEl.textContent = score.toFixed(1);
+  scoreEl.style.fill = color;
+
+  const badge = document.getElementById('gauge-level-badge');
+  badge.textContent = label;
+  badge.className = `gauge-level-badge badge ${cls}`;
+}
+
+/* ── Signal list ── */
+const SIGNAL_META = {
+  is_historical_payee:          { label: 'Historical Payee',         safe: v => v === 1 },
+  is_vm_or_emulator:            { label: 'VM / Emulator',            safe: v => v === 0 },
+  webdriver_detected:           { label: 'Webdriver Detected',       safe: v => v === 0 },
+  is_known_location:            { label: 'Known Location',           safe: v => v === 1 },
+  profile_updated_this_session: { label: 'Profile Changed',          safe: v => v === 0 },
+  timezone_mismatch:            { label: 'Timezone Mismatch',        safe: v => v === 0 },
+  pages_visited_pre_transfer:   { label: 'Pages Visited',            safe: () => true },
+  time_login_to_transfer_sec:   { label: 'Time Since Login (s)',     safe: () => true },
+  used_fido_passkey:            { label: 'FIDO Passkey',             safe: v => v === 1 },
+  form_completion_time_sec:     { label: 'Form Fill Time (s)',       safe: () => true },
+  password_entry_ms:            { label: 'Password Entry (ms)',      safe: () => true },
+  mouse_linearity_score:        { label: 'Mouse Linearity',          safe: v => v < 0.5 },
+  typing_cadence_score:         { label: 'Typing Cadence',           safe: v => v < 0.5 },
+  is_neobank_routing:           { label: 'Neobank Routing',          safe: v => v === 0 },
+  payee_account_age_hours:      { label: 'Payee Account Age (hrs)',  safe: v => v > 100 },
+  is_in_active_call:            { label: 'Active Phone Call',        safe: v => v === 0 },
+  is_screensharing_active:      { label: 'Screen Sharing',           safe: v => v === 0 },
+  remote_access_app_detected:   { label: 'Remote Access App',        safe: v => v === 0 },
+  trust_score_live:             { label: 'Trust Score',              safe: v => v > 5 },
+  session_tension:              { label: 'Session Tension',          safe: v => v === 0 },
+  coached_fraud_index:          { label: 'Coached Fraud Index',      safe: v => v === 0 },
+  mule_potential:               { label: 'Mule Potential',           safe: v => v === 0 },
+  bot_agility_index:            { label: 'Bot Agility Index',        safe: v => v === 0 },
+  transfer_intensity:           { label: 'Transfer Intensity',       safe: v => v < 5 },
+  transfer_amount_lek:          { label: 'Transfer Amount (ALL)',    safe: () => true },
+  transfers_past_24h:           { label: 'Transfers (24h)',          safe: v => v < 5 },
+  ip_asn_type_encoded:          { label: 'IP ASN Type',              safe: v => v === 3 },
+};
+
+function renderSignals(features) {
+  const list = document.getElementById('signal-list');
+  if (!features) { list.innerHTML = '<li class="signal-item" style="color:var(--muted);">No data</li>'; return; }
+
+  const items = Object.entries(SIGNAL_META).map(([key, meta]) => {
+    const val = features[key];
+    if (val === undefined) return '';
+    const isSafe = meta.safe(val);
+    const dotCls = isSafe ? 'dot-safe' : (
+      ['is_vm_or_emulator','webdriver_detected','is_in_active_call',
+       'is_screensharing_active','remote_access_app_detected','coached_fraud_index'].includes(key)
+        ? 'dot-danger' : 'dot-warn'
+    );
+    const display = typeof val === 'number' ? (Number.isInteger(val) ? val : val.toFixed(3)) : val;
+    return `<li class="signal-item">
+      <span class="signal-dot ${dotCls}"></span>
+      <span class="signal-name">${meta.label}</span>
+      <span class="signal-value">${display}</span>
+    </li>`;
+  });
+  list.innerHTML = items.join('');
+}
+
+/* ── Fetch risk score ── */
+async function refreshRisk() {
+  try {
+    const res = await fetch('/api/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: 10000 }),
+    });
+    const data = await res.json();
+    updateGauge(data.risk_score);
+    renderSignals(data.features);
+  } catch (e) {
+    console.error('Risk fetch error:', e);
+  }
+}
+
+/* ── Load user ── */
+async function loadProfile() {
+  try {
+    const res = await fetch('/api/user');
+    const data = await res.json();
+    const u = data.user;
+
+    document.getElementById('p-name').textContent = u.name;
+    document.getElementById('p-iban').textContent = u.iban;
+    document.getElementById('p-location').textContent = u.location;
+    document.getElementById('p-age').textContent = u.account_age_days + ' days';
+
+    document.getElementById('edit-name').value = u.name;
+    document.getElementById('edit-location').value = u.location;
+
+    renderTxnTable(data.transactions);
+  } catch (e) {
+    console.error('Profile load error:', e);
+  }
+}
+
+function renderTxnTable(txns) {
+  const tbody = document.getElementById('profile-txn-body');
+  if (!txns || txns.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:2rem;">No transactions.</td></tr>';
+    return;
+  }
+  const riskBadge = lv => {
+    const cls = { low:'badge-low', medium:'badge-medium', high:'badge-high' }[lv] || 'badge-low';
+    return `<span class="badge ${cls}">${lv.toUpperCase()}</span>`;
+  };
+  const statusCls = { completed:'status-completed', blocked:'status-blocked', pending:'status-pending' };
+  tbody.innerHTML = txns.map(t => `
+    <tr>
+      <td style="font-weight:600;">${t.recipient_name}</td>
+      <td style="font-family:monospace;font-size:0.78rem;color:var(--muted);">${t.recipient_iban}</td>
+      <td>${formatALL(t.amount)}</td>
+      <td style="color:var(--muted);font-size:0.82rem;">${formatDate(t.timestamp)}</td>
+      <td style="font-weight:700;">${t.risk_score.toFixed(1)}</td>
+      <td>${riskBadge(t.risk_level)}</td>
+      <td><span class="status-badge ${statusCls[t.status] || ''}">${t.status}</span></td>
+      <td style="font-size:0.75rem;color:var(--muted);max-width:200px;">${
+        Array.isArray(t.triggered_signals) ? t.triggered_signals.join(', ') : t.triggered_signals
+      }</td>
+    </tr>
+  `).join('');
+}
+
+/* ── Edit profile ── */
+function toggleEdit() {
+  const form = document.getElementById('edit-form');
+  form.classList.toggle('visible');
+  document.getElementById('save-msg').style.display = 'none';
+}
+
+async function saveProfile() {
+  const name = document.getElementById('edit-name').value.trim();
+  const location = document.getElementById('edit-location').value.trim();
+  if (!name && !location) return;
+
+  try {
+    await fetch('/api/update-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, location }),
+    });
+    document.getElementById('p-name').textContent = name || document.getElementById('p-name').textContent;
+    document.getElementById('p-location').textContent = location || document.getElementById('p-location').textContent;
+    document.getElementById('save-msg').style.display = 'block';
+  } catch (e) {
+    console.error('Save profile error:', e);
+  }
+}
+
+/* ── Boot ── */
+document.addEventListener('DOMContentLoaded', () => {
+  loadProfile();
+  refreshRisk();
+});
+</script>
+</body>
+</html>
