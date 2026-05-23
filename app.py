@@ -132,6 +132,7 @@ PRESENTER_DEFAULTS = {
     "mouse_linearity_score": 0.1,
     "typing_cadence_score": 0.1,
     "is_neobank_routing": 0,
+    # mule_potential and session_tension kept at 0 for XGBoost model compat
     "mule_potential": 0,
     "session_tension": 0,
     "is_vm_or_emulator": 0,
@@ -141,6 +142,8 @@ PRESENTER_DEFAULTS = {
     "is_screensharing_active": 0,
     "remote_access_app_detected": 0,
     "coached_fraud_index": 0,
+    # NEW HIGH signal
+    "session_from_link": 0,
 }
 
 
@@ -188,6 +191,12 @@ def build_feature_vector(data, conn):
         ip_enc = int(IP_ASN_ENCODER.transform(["residential"])[0])
 
     login_time = session.get("login_time", time.time())
+    # session_from_link: either presenter toggled OR auto-detected via referrer/URL
+    session_from_link = max(
+        int(ps.get("session_from_link", 0)),
+        int(session.get("session_from_link", 0)),
+    )
+
     return {
         "is_historical_payee":          is_historical,
         "is_vm_or_emulator":            int(ps["is_vm_or_emulator"]),
@@ -209,19 +218,22 @@ def build_feature_vector(data, conn):
         "is_screensharing_active":      int(ps["is_screensharing_active"]),
         "remote_access_app_detected":   int(ps["remote_access_app_detected"]),
         "trust_score_live":             _trust_score(conn, user["account_age_days"]),
-        "session_tension":              float(ps["session_tension"]),
+        "session_tension":              float(ps.get("session_tension", 0)),   # always 0, kept for XGBoost
         "coached_fraud_index":          float(ps["coached_fraud_index"]),
-        "mule_potential":               float(ps["mule_potential"]),
+        "mule_potential":               float(ps.get("mule_potential", 0)),    # always 0, kept for XGBoost
         "bot_agility_index":            float(ps["bot_agility_index"]),
         "transfer_intensity":           _transfer_intensity(conn, amount),
         "transfer_amount_lek":          amount,
         "transfers_past_24h":           int(txns_24h),
         "ip_asn_type_encoded":          ip_enc,
+        # Extended signals (not in XGBoost feature order, used only for rule engine)
+        "session_from_link":            session_from_link,
     }
 
 
-def triggered_signals_list(feats, ps):
+def triggered_signals_list(feats, ps, sess_signals=None):
     s = []
+    sess_signals = sess_signals or {}
     if not feats["is_historical_payee"]:          s.append("Unknown payee")
     if feats["is_vm_or_emulator"]:                s.append("Virtual machine detected")
     if feats["webdriver_detected"]:               s.append("Browser automation detected")
@@ -235,11 +247,17 @@ def triggered_signals_list(feats, ps):
     if feats["is_screensharing_active"]:          s.append("Screen sharing active")
     if feats["remote_access_app_detected"]:       s.append("Remote access software detected")
     if feats["coached_fraud_index"] > 0:          s.append("Coached fraud indicators")
-    if feats["mule_potential"] > 0:               s.append("Potential money mule pattern")
     if feats["bot_agility_index"] > 0:            s.append("Bot-like agility detected")
     if feats["transfer_intensity"] > 5:           s.append("Unusually large transfer")
+    if feats.get("session_from_link"):            s.append("Session opened from external link")
     ip_asn = ps.get("ip_asn_type", "residential")
     if ip_asn in ("hosting", "business"):         s.append(f"Suspicious IP origin ({ip_asn})")
+    # Auto-detected session signals
+    if sess_signals.get("clipboard_activity"):    s.append("Clipboard activity detected")
+    if sess_signals.get("tab_switched"):          s.append("Tab-switching detected")
+    if sess_signals.get("unknown_iban"):          s.append("Unrecognised IBAN entered")
+    if sess_signals.get("password_pasted"):       s.append("Password pasted")
+    if sess_signals.get("new_recipient"):         s.append("New recipient added")
     return s or ["No anomalies detected"]
 
 
@@ -283,21 +301,25 @@ def calculate_risk_score(feats, amount, sess_signals):
       + automated session additions (flat)
       + MEDIUM-tier signal sum × 1.5
       + HIGH-tier signal sum × 2.5
-      × amount scalar (if amount > 90 000 ALL)
+      → hard floor: if amount > 90 000 ALL, score = max(score, 3.5)
+      → ×1.15 amount scalar if amount > 90 000 ALL
       → clamped [0, 10]
 
-    Scenario calibration:
-      S1 LOW  : all-safe defaults, 5 000 ALL  → ~1.0
-      S2 MED  : tz + neobank + no-hist + no-fido + mouse 0.65, 85 000 → ~4.3
-      S3 HIGH : mule + bot + screen + tension + tz + mouse/typing 0.9 → ~7.5
+    Scenario calibration (10 000 ALL unless noted):
+      S1 LOW  : all-safe defaults              → 1.0
+      S2 MED  : tz + neobank + no-hist + no-fido + mouse 0.65, 85 000 ALL → ~4.3
+      S3 HIGH : session_from_link + bot + screen + tz + mouse/typing 0.9  → ~7.2
     """
     score = 1.0  # BASE
 
-    # ── Automated session signals ──────────────────────────────────────────────
-    if sess_signals.get("password_pasted"):   score += 0.5
-    if sess_signals.get("new_recipient"):     score += 0.5
-    if sess_signals.get("profile_updated"):   score += 0.5
-    if amount > 90_000:                       score += 1.0
+    # ── Automated session signals (flat additions) ─────────────────────────────
+    if sess_signals.get("password_pasted"):    score += 0.50
+    if sess_signals.get("new_recipient"):      score += 0.50
+    if sess_signals.get("profile_updated"):    score += 0.50
+    if sess_signals.get("clipboard_activity"): score += 0.50
+    if sess_signals.get("tab_switched"):       score += 0.40
+    if sess_signals.get("unknown_iban"):       score += 0.60
+    if amount > 90_000:                        score += 1.0
 
     # ── MEDIUM-tier manual signals (× 1.5) ────────────────────────────────────
     m = 0.0
@@ -312,18 +334,18 @@ def calculate_risk_score(feats, amount, sess_signals):
 
     # ── HIGH-tier manual signals (× 2.5) ──────────────────────────────────────
     h = 0.0
-    if feats["mule_potential"]:                   h += 0.50
+    if feats.get("session_from_link"):            h += 0.80   # opened from email/SMS link
     if feats["bot_agility_index"]:                h += 0.50
     if feats["is_screensharing_active"]:          h += 0.40
-    if feats["session_tension"]:                  h += 0.40
     if feats["is_vm_or_emulator"]:                h += 0.40
     if feats["remote_access_app_detected"]:       h += 0.40
     if feats["is_in_active_call"]:                h += 0.30
     if feats["coached_fraud_index"]:              h += 0.30
     score += h * 2.5
 
-    # ── Amount scalar ──────────────────────────────────────────────────────────
+    # ── Daily transfer limit hard floor (> 90 000 ALL always triggers MEDIUM) ─
     if amount > 90_000:
+        score = max(score, 3.5)
         score *= 1.15
 
     return round(min(10.0, max(0.0, score)), 2)
@@ -399,9 +421,12 @@ def api_score():
 
     # Rule-based deterministic score (primary — drives UI flow)
     sess_signals = {
-        "password_pasted": session.get("password_pasted", 0),
-        "new_recipient":   session.get("new_recipient",   0),
-        "profile_updated": session.get("profile_updated", 0),
+        "password_pasted":    session.get("password_pasted",    0),
+        "new_recipient":      session.get("new_recipient",      0),
+        "profile_updated":    session.get("profile_updated",    0),
+        "clipboard_activity": session.get("clipboard_activity", 0),
+        "tab_switched":       session.get("tab_switched",       0),
+        "unknown_iban":       session.get("unknown_iban",       0),
     }
     risk_score = calculate_risk_score(feats, amount, sess_signals)
     if risk_score >= 7.0:
@@ -411,7 +436,7 @@ def api_score():
     else:
         risk_level = "low"
 
-    signals = triggered_signals_list(feats, ps)
+    signals = triggered_signals_list(feats, ps, sess_signals)
     explanation = generate_explanation(risk_level, signals)
 
     return jsonify({
@@ -475,25 +500,59 @@ def api_set_signals():
 @app.route("/api/report-paste", methods=["POST"])
 def api_report_paste():
     session["password_pasted"] = 1
+    session.modified = True
+    return jsonify({"success": True})
+
+
+@app.route("/api/report-clipboard", methods=["POST"])
+def api_report_clipboard():
+    session["clipboard_activity"] = 1
+    session.modified = True
+    return jsonify({"success": True})
+
+
+@app.route("/api/report-tab-switch", methods=["POST"])
+def api_report_tab_switch():
+    session["tab_switched"] = 1
+    session.modified = True
+    return jsonify({"success": True})
+
+
+@app.route("/api/report-referrer", methods=["POST"])
+def api_report_referrer():
+    """Called when JS detects session opened from email/SMS/external link."""
+    session["session_from_link"] = 1
+    session.modified = True
+    return jsonify({"success": True})
+
+
+@app.route("/api/report-unknown-iban", methods=["POST"])
+def api_report_unknown_iban():
+    session["unknown_iban"] = 1
+    session.modified = True
     return jsonify({"success": True})
 
 
 @app.route("/api/reset-session")
 def api_reset_session():
-    session.pop("presenter_signals", None)
-    session.pop("profile_updated", None)
-    session.pop("password_pasted", None)
-    session.pop("new_recipient", None)
+    for key in ("presenter_signals", "profile_updated", "password_pasted",
+                "new_recipient", "clipboard_activity", "tab_switched",
+                "session_from_link", "unknown_iban"):
+        session.pop(key, None)
     return jsonify({"success": True})
 
 
 @app.route("/api/session-status")
 def api_session_status():
     return jsonify({
-        "profile_updated": session.get("profile_updated", 0),
-        "password_pasted": session.get("password_pasted", 0),
-        "new_recipient":   session.get("new_recipient",   0),
-        "presenter_signals": presenter_signals(),
+        "profile_updated":    session.get("profile_updated",    0),
+        "password_pasted":    session.get("password_pasted",    0),
+        "new_recipient":      session.get("new_recipient",      0),
+        "clipboard_activity": session.get("clipboard_activity", 0),
+        "tab_switched":       session.get("tab_switched",       0),
+        "session_from_link":  session.get("session_from_link",  0),
+        "unknown_iban":       session.get("unknown_iban",       0),
+        "presenter_signals":  presenter_signals(),
     })
 
 
@@ -569,10 +628,10 @@ def api_clear_history():
     conn.close()
 
     # Also wipe session state so the presenter gauge resets cleanly
-    session.pop("presenter_signals", None)
-    session.pop("profile_updated", None)
-    session.pop("password_pasted", None)
-    session.pop("new_recipient", None)
+    for key in ("presenter_signals", "profile_updated", "password_pasted",
+                "new_recipient", "clipboard_activity", "tab_switched",
+                "session_from_link", "unknown_iban"):
+        session.pop(key, None)
 
     return jsonify({"success": True})
 

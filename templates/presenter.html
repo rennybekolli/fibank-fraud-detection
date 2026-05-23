@@ -27,7 +27,7 @@
 
 <!-- Score formula reference -->
 <div style="background:#060d14;border-bottom:1px solid #1a2d42;padding:0.5rem 1.5rem;font-size:0.7rem;color:#4a6075;font-family:monospace;letter-spacing:0.3px;">
-  score = 1.0 [base] + {pwd_paste +0.5, new_recip +0.5, profile_upd +0.5, amt&gt;90k +1.0} + MEDIUM×1.5 + HIGH×2.5 → ×1.15 if amt&gt;90k → clamp[0,10]
+  score = 1.0 [base] + {pwd_paste +0.5, new_recip +0.5, profile_upd +0.5, clipboard +0.5, tab_switch +0.4, unknown_iban +0.6, amt&gt;90k +1.0} + MEDIUM×1.5 + HIGH×2.5 → floor 3.5 if amt&gt;90k → ×1.15 → clamp[0,10]
 </div>
 
 <!-- Signal columns -->
@@ -87,6 +87,26 @@
       <div class="indicator-row">
         <span class="toggle-label" style="color:#8ba4ba;font-size:0.78rem;">New recipient added</span>
         <span class="indicator-dot" id="ind-newrecip"></span>
+      </div>
+
+      <div class="indicator-row">
+        <span class="toggle-label" style="color:#8ba4ba;font-size:0.78rem;">Clipboard activity</span>
+        <span class="indicator-dot" id="ind-clipboard"></span>
+      </div>
+
+      <div class="indicator-row">
+        <span class="toggle-label" style="color:#8ba4ba;font-size:0.78rem;">Tab switching</span>
+        <span class="indicator-dot" id="ind-tabswitch"></span>
+      </div>
+
+      <div class="indicator-row">
+        <span class="toggle-label" style="color:#8ba4ba;font-size:0.78rem;">Unknown IBAN entered</span>
+        <span class="indicator-dot" id="ind-unknowniban"></span>
+      </div>
+
+      <div class="indicator-row">
+        <span class="toggle-label" style="color:#8ba4ba;font-size:0.78rem;">Session from email/SMS link</span>
+        <span class="indicator-dot" id="ind-fromlink"></span>
       </div>
     </div>
   </div>
@@ -153,9 +173,9 @@
     <div class="p-panel-header p-header-high">🔴 High Signals <span style="opacity:0.6;font-weight:400;">× 2.5</span></div>
 
     <div class="toggle-row">
-      <span class="toggle-label">Mule Potential <span style="color:#4a6075;font-size:0.7rem;">(+1.25)</span></span>
+      <span class="toggle-label">Session from Email/SMS Link 📧 <span style="color:#4a6075;font-size:0.7rem;">(+2.00)</span></span>
       <label class="toggle-switch danger">
-        <input type="checkbox" id="mule_potential">
+        <input type="checkbox" id="session_from_link">
         <span class="toggle-slider"></span>
       </label>
     </div>
@@ -172,14 +192,6 @@
       <span class="toggle-label">SCREEN SHARING ACTIVE 🖥 <span style="color:#4a6075;font-size:0.7rem;">(+1.00)</span></span>
       <label class="toggle-switch danger">
         <input type="checkbox" id="is_screensharing_active">
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-
-    <div class="toggle-row">
-      <span class="toggle-label">Session Tension <span style="color:#4a6075;font-size:0.7rem;">(+1.00)</span></span>
-      <label class="toggle-switch danger">
-        <input type="checkbox" id="session_tension">
         <span class="toggle-slider"></span>
       </label>
     </div>
@@ -216,8 +228,10 @@
       </label>
     </div>
 
-    <!-- webdriver_detected is a hidden field — kept in DOM for getSignals() -->
+    <!-- Hidden fields kept for XGBoost model compat — never toggled by presenter -->
     <input type="hidden" id="webdriver_detected" value="0">
+    <input type="hidden" id="mule_potential" value="0">
+    <input type="hidden" id="session_tension" value="0">
   </div>
 
 </div>
@@ -264,49 +278,47 @@ function syncNoFido(cb) {
 /* ── Scenario presets ── */
 async function setScenario(n) {
   // Reset all to safe defaults
-  document.getElementById('is_historical_payee').checked      = true;
-  document.getElementById('is_known_location').checked        = true;
-  document.getElementById('used_fido_passkey').checked        = true;
-  document.getElementById('ip_asn_type').value                = 'residential';
-  document.getElementById('timezone_mismatch').checked        = false;
-  document.getElementById('is_neobank_routing').checked       = false;
-  document.getElementById('mouse_linearity_score').value      = 0.1;
-  document.getElementById('typing_cadence_score').value       = 0.1;
-  document.getElementById('mouse_val').textContent            = '0.10';
-  document.getElementById('typing_val').textContent           = '0.10';
-  document.getElementById('mule_potential').checked           = false;
-  document.getElementById('bot_agility_index').checked        = false;
-  document.getElementById('is_screensharing_active').checked  = false;
-  document.getElementById('session_tension').checked          = false;
-  document.getElementById('is_vm_or_emulator').checked        = false;
+  document.getElementById('is_historical_payee').checked        = true;
+  document.getElementById('is_known_location').checked          = true;
+  document.getElementById('used_fido_passkey').checked          = true;
+  document.getElementById('ip_asn_type').value                  = 'residential';
+  document.getElementById('timezone_mismatch').checked          = false;
+  document.getElementById('is_neobank_routing').checked         = false;
+  document.getElementById('mouse_linearity_score').value        = 0.1;
+  document.getElementById('typing_cadence_score').value         = 0.1;
+  document.getElementById('mouse_val').textContent              = '0.10';
+  document.getElementById('typing_val').textContent             = '0.10';
+  document.getElementById('session_from_link').checked          = false;
+  document.getElementById('bot_agility_index').checked          = false;
+  document.getElementById('is_screensharing_active').checked    = false;
+  document.getElementById('is_vm_or_emulator').checked          = false;
   document.getElementById('remote_access_app_detected').checked = false;
-  document.getElementById('is_in_active_call').checked        = false;
-  document.getElementById('coached_fraud_index').checked      = false;
+  document.getElementById('is_in_active_call').checked          = false;
+  document.getElementById('coached_fraud_index').checked        = false;
   // Sync virtual toggles
-  document.getElementById('is_unknown_payee_toggle').checked  = false;
-  document.getElementById('no_fido_toggle').checked           = false;
+  document.getElementById('is_unknown_payee_toggle').checked    = false;
+  document.getElementById('no_fido_toggle').checked             = false;
 
   if (n === 2) {
-    // MEDIUM ~4.3: hist=off, fido=off, tz, neobank, mouse=0.65
-    document.getElementById('is_historical_payee').checked    = false;
-    document.getElementById('used_fido_passkey').checked      = false;
-    document.getElementById('timezone_mismatch').checked      = true;
-    document.getElementById('is_neobank_routing').checked     = true;
-    document.getElementById('mouse_linearity_score').value    = 0.65;
-    document.getElementById('mouse_val').textContent          = '0.65';
+    // MEDIUM ~4.3: no-hist + no-fido + tz + neobank + mouse=0.65, 85 000 ALL
+    document.getElementById('is_historical_payee').checked     = false;
+    document.getElementById('used_fido_passkey').checked       = false;
+    document.getElementById('timezone_mismatch').checked       = true;
+    document.getElementById('is_neobank_routing').checked      = true;
+    document.getElementById('mouse_linearity_score').value     = 0.65;
+    document.getElementById('mouse_val').textContent           = '0.65';
     document.getElementById('is_unknown_payee_toggle').checked = true;
     document.getElementById('no_fido_toggle').checked          = true;
   } else if (n === 3) {
-    // HIGH ~7.5: mule + bot + screensharing + tension + tz + mouse/typing=0.9
-    document.getElementById('mule_potential').checked          = true;
-    document.getElementById('bot_agility_index').checked       = true;
-    document.getElementById('is_screensharing_active').checked = true;
-    document.getElementById('session_tension').checked         = true;
-    document.getElementById('timezone_mismatch').checked       = true;
-    document.getElementById('mouse_linearity_score').value     = 0.9;
-    document.getElementById('mouse_val').textContent           = '0.90';
-    document.getElementById('typing_cadence_score').value      = 0.9;
-    document.getElementById('typing_val').textContent          = '0.90';
+    // HIGH ~7.2: session_from_link + bot + screensharing + tz + mouse/typing=0.9
+    document.getElementById('session_from_link').checked        = true;
+    document.getElementById('bot_agility_index').checked        = true;
+    document.getElementById('is_screensharing_active').checked  = true;
+    document.getElementById('timezone_mismatch').checked        = true;
+    document.getElementById('mouse_linearity_score').value      = 0.9;
+    document.getElementById('mouse_val').textContent            = '0.90';
+    document.getElementById('typing_cadence_score').value       = 0.9;
+    document.getElementById('typing_val').textContent           = '0.90';
   }
 
   await applySignals();
@@ -314,23 +326,24 @@ async function setScenario(n) {
 
 function getSignals() {
   return {
-    is_historical_payee:        document.getElementById('is_historical_payee').checked    ? 1 : 0,
-    is_known_location:          document.getElementById('is_known_location').checked       ? 1 : 0,
-    used_fido_passkey:          document.getElementById('used_fido_passkey').checked       ? 1 : 0,
+    is_historical_payee:        document.getElementById('is_historical_payee').checked        ? 1 : 0,
+    is_known_location:          document.getElementById('is_known_location').checked           ? 1 : 0,
+    used_fido_passkey:          document.getElementById('used_fido_passkey').checked           ? 1 : 0,
     ip_asn_type:                document.getElementById('ip_asn_type').value,
-    timezone_mismatch:          document.getElementById('timezone_mismatch').checked       ? 1 : 0,
+    timezone_mismatch:          document.getElementById('timezone_mismatch').checked           ? 1 : 0,
     mouse_linearity_score:      parseFloat(document.getElementById('mouse_linearity_score').value),
     typing_cadence_score:       parseFloat(document.getElementById('typing_cadence_score').value),
-    is_neobank_routing:         document.getElementById('is_neobank_routing').checked      ? 1 : 0,
-    mule_potential:             document.getElementById('mule_potential').checked           ? 1 : 0,
-    session_tension:            document.getElementById('session_tension').checked          ? 1 : 0,
-    is_vm_or_emulator:          document.getElementById('is_vm_or_emulator').checked       ? 1 : 0,
+    is_neobank_routing:         document.getElementById('is_neobank_routing').checked          ? 1 : 0,
+    session_from_link:          document.getElementById('session_from_link').checked           ? 1 : 0,
+    is_vm_or_emulator:          document.getElementById('is_vm_or_emulator').checked           ? 1 : 0,
     webdriver_detected:         0,
-    bot_agility_index:          document.getElementById('bot_agility_index').checked       ? 1 : 0,
-    is_in_active_call:          document.getElementById('is_in_active_call').checked       ? 1 : 0,
-    is_screensharing_active:    document.getElementById('is_screensharing_active').checked ? 1 : 0,
-    remote_access_app_detected: document.getElementById('remote_access_app_detected').checked ? 1 : 0,
-    coached_fraud_index:        document.getElementById('coached_fraud_index').checked     ? 1 : 0,
+    mule_potential:             0,   // removed from scoring — always 0
+    session_tension:            0,   // removed from scoring — always 0
+    bot_agility_index:          document.getElementById('bot_agility_index').checked           ? 1 : 0,
+    is_in_active_call:          document.getElementById('is_in_active_call').checked           ? 1 : 0,
+    is_screensharing_active:    document.getElementById('is_screensharing_active').checked     ? 1 : 0,
+    remote_access_app_detected: document.getElementById('remote_access_app_detected').checked  ? 1 : 0,
+    coached_fraud_index:        document.getElementById('coached_fraud_index').checked          ? 1 : 0,
   };
 }
 
@@ -396,9 +409,13 @@ async function pollIndicators() {
   try {
     const res  = await fetch('/api/session-status');
     const data = await res.json();
-    toggle('ind-profile',  data.profile_updated);
-    toggle('ind-paste',    data.password_pasted);
-    toggle('ind-newrecip', data.new_recipient);
+    toggle('ind-profile',     data.profile_updated);
+    toggle('ind-paste',       data.password_pasted);
+    toggle('ind-newrecip',    data.new_recipient);
+    toggle('ind-clipboard',   data.clipboard_activity);
+    toggle('ind-tabswitch',   data.tab_switched);
+    toggle('ind-unknowniban', data.unknown_iban);
+    toggle('ind-fromlink',    data.session_from_link);
   } catch { /* silent */ }
 }
 

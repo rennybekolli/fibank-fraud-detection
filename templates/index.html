@@ -156,7 +156,7 @@
             </div>
             <div style="display:flex;gap:0.5rem;">
               <button class="btn btn-primary btn-sm" style="flex:1;" id="save-recip-btn" onclick="saveNewRecipient()">Save</button>
-              <button class="btn btn-sm" style="background:#1e3248;color:#8ba4ba;" onclick="toggleAddRecipientPanel()">Cancel</button>
+              <button class="btn btn-sm" style="background:#F0F4FA;color:var(--muted);border:1px solid var(--border);" onclick="toggleAddRecipientPanel()">Cancel</button>
             </div>
           </div>
         </div>
@@ -197,33 +197,86 @@
   </div>
 </div>
 
-<!-- ── MEDIUM RISK modal (ID verification) ── -->
+<!-- ── MEDIUM RISK modal — multi-method auth ── -->
 <div class="modal-overlay" id="modal-medium">
   <div class="modal modal-border-medium">
     <div class="modal-icon">⚠️</div>
-    <h2>Identity Verification Required</h2>
-    <p id="medium-explanation">Unusual patterns detected. Please verify your identity to continue.</p>
+    <h2>Verify Your Identity</h2>
+    <p id="medium-explanation" style="margin-bottom:1rem;">Unusual patterns detected. Please verify your identity to continue.</p>
 
-    <div class="form-group">
-      <label>Albanian ID Card Number</label>
-      <input type="text" id="verify-id-number" placeholder="e.g. B12345678A" oninput="checkMediumReady()">
+    <!-- Auth method tabs -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('faceid',this)">😊 Face ID</button>
+      <button class="auth-tab" onclick="switchAuthTab('touchid',this)">👆 Touch ID</button>
+      <button class="auth-tab" onclick="switchAuthTab('passkey',this)">🔑 Passkey</button>
+      <button class="auth-tab" onclick="switchAuthTab('push',this)">📱 Push</button>
     </div>
 
-    <div class="form-group" style="margin-bottom:1.2rem;">
-      <label>Upload ID Photo</label>
-      <div class="upload-area" id="upload-area">
-        <span class="upload-icon">📷</span>
-        <span class="upload-text" id="upload-text">Click to upload front of ID card</span>
-        <input type="file" id="verify-id-photo" accept="image/*" onchange="onPhotoSelected(this)">
+    <!-- Face ID panel -->
+    <div class="auth-panel" id="auth-faceid">
+      <div class="face-scan-frame" id="face-scan-frame">👤</div>
+      <p style="font-size:0.79rem;color:var(--muted);margin:0;">Position your face in the frame</p>
+      <button class="btn btn-primary btn-sm" onclick="simulateAuth('faceid')">Authenticate with Face ID</button>
+    </div>
+
+    <!-- Touch ID panel -->
+    <div class="auth-panel" id="auth-touchid" style="display:none;">
+      <div class="fingerprint-display" id="fingerprint-display">👆</div>
+      <p style="font-size:0.79rem;color:var(--muted);margin:0;">Place your finger on the sensor</p>
+      <button class="btn btn-primary btn-sm" onclick="simulateAuth('touchid')">Authenticate with Touch ID</button>
+    </div>
+
+    <!-- Passkey panel -->
+    <div class="auth-panel" id="auth-passkey" style="display:none;">
+      <div class="passkey-display" id="passkey-display">🔑</div>
+      <p style="font-size:0.79rem;color:var(--muted);margin:0;">Use your device passkey to verify</p>
+      <button class="btn btn-primary btn-sm" onclick="simulateAuth('passkey')">Use Passkey</button>
+    </div>
+
+    <!-- Push Approval panel -->
+    <div class="auth-panel" id="auth-push" style="display:none;">
+      <div class="push-notification-mock" id="push-mock">
+        <div style="font-weight:700;font-size:0.8rem;margin-bottom:3px;">🏦 Fibank Security</div>
+        <div style="font-size:0.76rem;color:var(--muted);">Approve transfer request?</div>
+        <div style="font-size:0.73rem;color:var(--muted);margin-top:3px;" id="push-amount-label">Amount: —</div>
       </div>
+      <button class="btn btn-primary btn-sm" onclick="simulateAuth('push')">Send Push Notification</button>
     </div>
 
+    <!-- Spinner during simulation -->
+    <div id="auth-spinner" style="display:none;text-align:center;padding:1rem 0;">
+      <div class="spinner" style="width:26px;height:26px;margin:0 auto;border-color:rgba(21,101,192,0.2);border-top-color:var(--blue);"></div>
+      <div style="margin-top:8px;font-size:0.78rem;color:var(--muted);">Verifying…</div>
+    </div>
+
+    <!-- Verified badge -->
+    <div class="auth-verified-badge" id="auth-verified-badge">✓ &nbsp;Identity Verified</div>
+
+    <!-- Proceed -->
     <button class="btn btn-warn btn-full" id="verify-btn" onclick="completeMediumVerify()" disabled>
-      Verify &amp; Proceed
+      Proceed with Transfer →
     </button>
-    <p style="font-size:0.72rem;color:var(--muted);margin-top:0.75rem;text-align:center;">
-      Your ID is verified via secure channel and never stored.
-    </p>
+
+    <!-- Albanian ID card collapsible fallback -->
+    <details class="auth-fallback">
+      <summary>Use Albanian ID Card instead</summary>
+      <div class="auth-fallback-body">
+        <div class="form-group" style="margin-top:0.75rem;">
+          <label>Albanian ID Card Number</label>
+          <input type="text" id="verify-id-number" placeholder="e.g. B12345678A" oninput="checkIdCardReady()">
+        </div>
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label>Upload ID Photo</label>
+          <div class="upload-area" id="upload-area">
+            <span class="upload-icon">📷</span>
+            <span class="upload-text" id="upload-text">Click to upload front of ID card</span>
+            <input type="file" id="verify-id-photo" accept="image/*" onchange="onPhotoSelected(this)">
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" id="id-verify-btn" onclick="completeIdVerify()" disabled>Verify ID Card</button>
+        <p style="font-size:0.7rem;color:var(--muted);margin-top:0.6rem;">Your ID is verified via secure channel and never stored.</p>
+      </div>
+    </details>
   </div>
 </div>
 
@@ -235,16 +288,37 @@
     Multiple critical threat signals detected simultaneously. Immediate authentication required.
   </p>
   <div class="lockdown-box">
-    <p>FIDO Passkey verification is required to authorise this transaction.</p>
-    <div id="high-btn-wrap">
-      <button class="btn btn-danger btn-full" style="font-size:1rem;padding:14px;" onclick="attemptPasskey()">
-        🔐 Authenticate with Passkey
+
+    <!-- Step 1: FIDO code -->
+    <div id="fido-step">
+      <div class="fido-step-label">Enter your FIDO security key code to authorise this transaction:</div>
+      <input type="password" class="fido-code-input" id="fido-code-input"
+             placeholder="••••••••" maxlength="10"
+             onkeydown="if(event.key==='Enter') verifyFido()">
+      <div class="fido-error" id="fido-error" style="display:none;">✕ Incorrect code. Initiating lockdown…</div>
+      <button class="btn btn-danger btn-full" style="font-size:0.95rem;padding:13px;" onclick="verifyFido()">
+        🔐 Verify FIDO Key
       </button>
     </div>
-    <div id="passkey-spinner" style="display:none;text-align:center;padding:1.5rem 0;">
-      <div class="spinner" style="width:32px;height:32px;margin:0 auto;"></div>
-      <div style="margin-top:12px;font-size:0.82rem;color:#a08080;">Contacting authentication server…</div>
+
+    <!-- Step 2: Biometric after correct FIDO -->
+    <div id="biometric-step" style="display:none;">
+      <div class="fido-success-label">✓ FIDO Key Accepted</div>
+      <div class="fido-success-sub">Complete biometric authentication to finalise the transfer:</div>
+      <div class="biometric-methods">
+        <button class="bio-btn" onclick="simulateBiometricHigh('faceid')">😊 Face ID</button>
+        <button class="bio-btn" onclick="simulateBiometricHigh('touchid')">👆 Touch ID</button>
+        <button class="bio-btn" onclick="simulateBiometricHigh('passkey')">🔑 Passkey</button>
+      </div>
     </div>
+
+    <!-- Spinner during biometric -->
+    <div id="high-spinner" style="display:none;text-align:center;padding:1.5rem 0;">
+      <div class="spinner" style="width:32px;height:32px;margin:0 auto;"></div>
+      <div style="margin-top:12px;font-size:0.82rem;color:#a08080;">Authenticating…</div>
+    </div>
+
+    <!-- Fail (wrong FIDO) -->
     <div id="passkey-fail" style="display:none;">
       <div class="lockdown-fail-box">
         <div class="fail-title">🔒 Authentication Failed</div>
@@ -254,6 +328,7 @@
         </div>
       </div>
     </div>
+
   </div>
 </div>
 
