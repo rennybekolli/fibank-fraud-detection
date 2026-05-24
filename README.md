@@ -1,4 +1,4 @@
-# 🛡️ Fibank Intelligent Fraud Detection System
+# 🛡️ Fibank Intelligent Fraud Detection System (16 HR CIT Hackathon)
 
 
 Presentation Link
