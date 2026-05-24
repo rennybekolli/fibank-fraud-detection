@@ -1,5 +1,9 @@
 # 🛡️ Fibank Intelligent Fraud Detection System
 
+
+Presentation Link
+(https://docs.google.com/presentation/d/1E_EcnwIikkUiIqFsS3_Bg0HFS0AoRGoGr5SslYc3UbM/edit?slide=id.p3#slide=id.p3)
+
 ### Real-Time Behavioural Risk Engine for Digital Banking
 
 **Award-Winning Hackathon Submission · Tirana, Albania**
