@@ -262,6 +262,8 @@ Open your browser and navigate to:
 
 ```text
 http://127.0.0.1:5000
+
+And http://127:0.0.1:5000/presenter
 ```
 
 You will be presented with the interactive dashboard and threat-injection control panel.
