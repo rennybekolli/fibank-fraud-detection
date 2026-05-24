@@ -16,7 +16,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "fibank_hackathon_2024_xK9mP2qr")
 
 # ── Model loading ──────────────────────────────────────────────────────────────
-MODEL = joblib.load("best_fraud_engine.joblib")
+MODEL = joblib.load("fraud_engine.joblib")
 _ENCODERS = joblib.load("label_encoder.joblib")
 IP_ASN_ENCODER = _ENCODERS["ip_asn_type"]
 
@@ -43,7 +43,7 @@ def get_db():
 
 
 SEED_TRANSACTIONS = lambda now: [
-    (1, 5000,   "Elton Hoxha",           "AL35 2021 1109 0000 0000 2356 8762",
+    (1, 5000,   "Elton Hoxha",            "AL35 2021 1109 0000 0000 2356 8762",
      (now - timedelta(days=3)).isoformat(),  1.2, "low",
      json.dumps(["No anomalies detected"]), "completed"),
     (1, 85000,  "Rinas Logistics SH.P.K", "AL47 2121 1009 0000 0000 1234 5678",
@@ -66,18 +66,15 @@ def init_db():
     conn = get_db()
     c = conn.cursor()
 
-    # ── users table (with password) ────────────────────────────────────────────
     c.execute("""CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY, name TEXT, iban TEXT, balance REAL,
         location TEXT, account_age_days INTEGER, password TEXT DEFAULT 'admin'
     )""")
-    # Migration: add password column to existing DBs that lack it
     try:
         c.execute("ALTER TABLE users ADD COLUMN password TEXT DEFAULT 'admin'")
     except Exception:
-        pass  # column already exists
+        pass
 
-    # ── transactions table ─────────────────────────────────────────────────────
     c.execute("""CREATE TABLE IF NOT EXISTS transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER, amount REAL, recipient_name TEXT, recipient_iban TEXT,
@@ -85,13 +82,11 @@ def init_db():
         triggered_signals TEXT, status TEXT
     )""")
 
-    # ── saved_recipients table ─────────────────────────────────────────────────
     c.execute("""CREATE TABLE IF NOT EXISTS saved_recipients (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER, name TEXT, iban TEXT
     )""")
 
-    # ── Seed user ──────────────────────────────────────────────────────────────
     if not c.execute("SELECT 1 FROM users WHERE id=1").fetchone():
         c.execute(
             "INSERT INTO users (id,name,iban,balance,location,account_age_days,password) "
@@ -99,12 +94,10 @@ def init_db():
             "450000,'Tirana, Albania',847,'admin')"
         )
     else:
-        # Ensure password is populated on existing rows
         c.execute(
             "UPDATE users SET password='admin' WHERE id=1 AND (password IS NULL OR password='')"
         )
 
-    # ── Seed saved recipients ──────────────────────────────────────────────────
     if not c.execute("SELECT 1 FROM saved_recipients WHERE user_id=1").fetchone():
         c.executemany(
             "INSERT INTO saved_recipients (user_id, name, iban) VALUES (?,?,?)",
@@ -114,7 +107,6 @@ def init_db():
             ]
         )
 
-    # ── Seed transactions ──────────────────────────────────────────────────────
     if not c.execute("SELECT 1 FROM transactions WHERE user_id=1").fetchone():
         c.executemany(TXN_INSERT_SQL, SEED_TRANSACTIONS(datetime.now()))
 
@@ -124,26 +116,24 @@ def init_db():
 
 # ── Presenter signal defaults ──────────────────────────────────────────────────
 PRESENTER_DEFAULTS = {
-    "is_historical_payee": 1,
-    "is_known_location": 1,
-    "used_fido_passkey": 1,
-    "ip_asn_type": "residential",
-    "timezone_mismatch": 0,
-    "mouse_linearity_score": 0.1,
-    "typing_cadence_score": 0.1,
-    "is_neobank_routing": 0,
-    # mule_potential and session_tension kept at 0 for XGBoost model compat
-    "mule_potential": 0,
-    "session_tension": 0,
-    "is_vm_or_emulator": 0,
-    "webdriver_detected": 0,
-    "bot_agility_index": 0,
-    "is_in_active_call": 0,
-    "is_screensharing_active": 0,
+    "is_historical_payee":    1,
+    "is_known_location":      1,
+    "used_fido_passkey":      1,
+    "ip_asn_type":            "residential",
+    "timezone_mismatch":      0,
+    "mouse_linearity_score":  0.1,
+    "typing_cadence_score":   0.1,
+    "is_neobank_routing":     0,
+    "mule_potential":         0,   # kept at 0 for XGBoost model compat
+    "session_tension":        0,   # kept at 0 for XGBoost model compat
+    "is_vm_or_emulator":      0,
+    "webdriver_detected":     0,
+    "bot_agility_index":      0,
+    "is_in_active_call":      0,
+    "is_screensharing_active":    0,
     "remote_access_app_detected": 0,
-    "coached_fraud_index": 0,
-    # NEW HIGH signal
-    "session_from_link": 0,
+    "coached_fraud_index":    0,
+    "session_from_link":      0,   # HIGH signal — opened from email/SMS link
 }
 
 
@@ -191,6 +181,7 @@ def build_feature_vector(data, conn):
         ip_enc = int(IP_ASN_ENCODER.transform(["residential"])[0])
 
     login_time = session.get("login_time", time.time())
+
     # session_from_link: either presenter toggled OR auto-detected via referrer/URL
     session_from_link = max(
         int(ps.get("session_from_link", 0)),
@@ -218,15 +209,15 @@ def build_feature_vector(data, conn):
         "is_screensharing_active":      int(ps["is_screensharing_active"]),
         "remote_access_app_detected":   int(ps["remote_access_app_detected"]),
         "trust_score_live":             _trust_score(conn, user["account_age_days"]),
-        "session_tension":              float(ps.get("session_tension", 0)),   # always 0, kept for XGBoost
+        "session_tension":              float(ps.get("session_tension", 0)),
         "coached_fraud_index":          float(ps["coached_fraud_index"]),
-        "mule_potential":               float(ps.get("mule_potential", 0)),    # always 0, kept for XGBoost
+        "mule_potential":               float(ps.get("mule_potential", 0)),
         "bot_agility_index":            float(ps["bot_agility_index"]),
         "transfer_intensity":           _transfer_intensity(conn, amount),
         "transfer_amount_lek":          amount,
         "transfers_past_24h":           int(txns_24h),
         "ip_asn_type_encoded":          ip_enc,
-        # Extended signals (not in XGBoost feature order, used only for rule engine)
+        # Extended — only used by rule engine, not XGBoost
         "session_from_link":            session_from_link,
     }
 
@@ -252,7 +243,6 @@ def triggered_signals_list(feats, ps, sess_signals=None):
     if feats.get("session_from_link"):            s.append("Session opened from external link")
     ip_asn = ps.get("ip_asn_type", "residential")
     if ip_asn in ("hosting", "business"):         s.append(f"Suspicious IP origin ({ip_asn})")
-    # Auto-detected session signals
     if sess_signals.get("clipboard_activity"):    s.append("Clipboard activity detected")
     if sess_signals.get("tab_switched"):          s.append("Tab-switching detected")
     if sess_signals.get("unknown_iban"):          s.append("Unrecognised IBAN entered")
@@ -278,17 +268,14 @@ def generate_explanation(risk_level, triggered_signals):
     return ""
 
 
-def score_features(feats):
-    """Keep XGBoost for the 'features' payload shown on the Profile signal breakdown."""
+def score_features_xgboost(feats):
+    """XGBoost model — used only for Profile page signal display."""
     X = np.array([[feats[f] for f in FEATURE_ORDER]])
     prob = float(MODEL.predict_proba(X)[0][1])
     risk_score = round(prob * 10, 2)
-    if risk_score >= 7.0:
-        risk_level = "high"
-    elif risk_score >= 3.0:
-        risk_level = "medium"
-    else:
-        risk_level = "low"
+    if risk_score >= 7.0:   risk_level = "high"
+    elif risk_score >= 3.0: risk_level = "medium"
+    else:                   risk_level = "low"
     return risk_score, risk_level
 
 
@@ -305,14 +292,14 @@ def calculate_risk_score(feats, amount, sess_signals):
       → ×1.15 amount scalar if amount > 90 000 ALL
       → clamped [0, 10]
 
-    Scenario calibration (10 000 ALL unless noted):
-      S1 LOW  : all-safe defaults              → 1.0
-      S2 MED  : tz + neobank + no-hist + no-fido + mouse 0.65, 85 000 ALL → ~4.3
-      S3 HIGH : session_from_link + bot + screen + tz + mouse/typing 0.9  → ~7.2
+    Scenario calibration:
+      S1 LOW  : all-safe defaults, 5 000 ALL              → 1.0
+      S2 MED  : tz+neobank+no-hist+no-fido+mouse=0.65, 85 000 ALL → ~4.3
+      S3 HIGH : session_from_link+bot+screen+tz+mouse/typing=0.9  → ~7.2
     """
-    score = 1.0  # BASE
+    score = 1.0
 
-    # ── Automated session signals (flat additions) ─────────────────────────────
+    # ── Automated session signals (flat) ───────────────────────────────────────
     if sess_signals.get("password_pasted"):    score += 0.50
     if sess_signals.get("new_recipient"):      score += 0.50
     if sess_signals.get("profile_updated"):    score += 0.50
@@ -334,7 +321,7 @@ def calculate_risk_score(feats, amount, sess_signals):
 
     # ── HIGH-tier manual signals (× 2.5) ──────────────────────────────────────
     h = 0.0
-    if feats.get("session_from_link"):            h += 0.80   # opened from email/SMS link
+    if feats.get("session_from_link"):            h += 0.80
     if feats["bot_agility_index"]:                h += 0.50
     if feats["is_screensharing_active"]:          h += 0.40
     if feats["is_vm_or_emulator"]:                h += 0.40
@@ -343,7 +330,7 @@ def calculate_risk_score(feats, amount, sess_signals):
     if feats["coached_fraud_index"]:              h += 0.30
     score += h * 2.5
 
-    # ── Daily transfer limit hard floor (> 90 000 ALL always triggers MEDIUM) ─
+    # ── Daily limit floor: > 90 000 ALL always forces MEDIUM minimum ──────────
     if amount > 90_000:
         score = max(score, 3.5)
         score *= 1.15
@@ -419,7 +406,6 @@ def api_score():
 
     amount = float(data.get("amount", 10000))
 
-    # Rule-based deterministic score (primary — drives UI flow)
     sess_signals = {
         "password_pasted":    session.get("password_pasted",    0),
         "new_recipient":      session.get("new_recipient",      0),
@@ -428,23 +414,21 @@ def api_score():
         "tab_switched":       session.get("tab_switched",       0),
         "unknown_iban":       session.get("unknown_iban",       0),
     }
+
     risk_score = calculate_risk_score(feats, amount, sess_signals)
-    if risk_score >= 7.0:
-        risk_level = "high"
-    elif risk_score >= 3.0:
-        risk_level = "medium"
-    else:
-        risk_level = "low"
+    if risk_score >= 7.0:   risk_level = "high"
+    elif risk_score >= 3.0: risk_level = "medium"
+    else:                   risk_level = "low"
 
     signals = triggered_signals_list(feats, ps, sess_signals)
     explanation = generate_explanation(risk_level, signals)
 
     return jsonify({
-        "risk_score": risk_score,
-        "risk_level": risk_level,
-        "explanation": explanation,
+        "risk_score":        risk_score,
+        "risk_level":        risk_level,
+        "explanation":       explanation,
         "triggered_signals": signals,
-        "features": feats,
+        "features":          feats,
     })
 
 
@@ -520,7 +504,6 @@ def api_report_tab_switch():
 
 @app.route("/api/report-referrer", methods=["POST"])
 def api_report_referrer():
-    """Called when JS detects session opened from email/SMS/external link."""
     session["session_from_link"] = 1
     session.modified = True
     return jsonify({"success": True})
@@ -566,7 +549,6 @@ def api_login():
     user = conn.execute("SELECT * FROM users WHERE id=1").fetchone()
     conn.close()
 
-    # Accept "admin", the user's full name, or their IBAN (spaces stripped)
     valid = {
         "admin",
         user["name"].lower(),
@@ -574,7 +556,7 @@ def api_login():
     }
     if username in valid and password == user["password"]:
         session["user_id"] = 1
-        session["login_time"] = time.time()   # restart fraud timer on login
+        session["login_time"] = time.time()
         return jsonify({"success": True})
 
     return jsonify({"success": False, "error": "Invalid credentials"}), 401
@@ -619,20 +601,19 @@ def api_recipients():
 
 @app.route("/api/clear-history", methods=["POST"])
 def api_clear_history():
-    """Wipe all demo transactions and reset balance — presenter use only."""
     conn = get_db()
     conn.execute("DELETE FROM transactions WHERE user_id=1")
     conn.executemany(TXN_INSERT_SQL, SEED_TRANSACTIONS(datetime.now()))
-    conn.execute("UPDATE users SET balance=450000, location='Tirana, Albania', name='Ardi Berisha' WHERE id=1")
+    conn.execute(
+        "UPDATE users SET balance=450000, location='Tirana, Albania', "
+        "name='Ardi Berisha' WHERE id=1"
+    )
     conn.commit()
     conn.close()
-
-    # Also wipe session state so the presenter gauge resets cleanly
     for key in ("presenter_signals", "profile_updated", "password_pasted",
                 "new_recipient", "clipboard_activity", "tab_switched",
                 "session_from_link", "unknown_iban"):
         session.pop(key, None)
-
     return jsonify({"success": True})
 
 

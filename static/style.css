@@ -835,122 +835,196 @@ tbody tr:hover td { background: #F5F9FF; }
   flex-shrink: 0;
 }
 
-/* ── Presenter gauge arc override (light arc bg looks wrong on dark presenter) ── */
-.presenter-body .gauge-arc-bg { stroke: #1e3248; }
-.presenter-body .gauge-score-text { fill: #c0d0e0; }
-.presenter-body .gauge-label-text { fill: #8ba4ba; }
+/* ── Presenter gauge arc override — light mode ── */
+.presenter-body .gauge-arc-bg    { stroke: #E4EDF8; }
+.presenter-body .gauge-score-text { fill: #192638; }
+.presenter-body .gauge-label-text { fill: #6D89A5; }
 
 /* ════════════════════════════════════════════
-   PRESENTER CONTROL PANEL — dark theme
+   PRESENTER CONTROL PANEL — LIGHT MODE
    Scoped so it never bleeds into the banking UI
 ════════════════════════════════════════════ */
 .presenter-body {
-  background: #080f17;
+  background: #EEF3FB;
   min-height: 100vh;
-  color: #c0d0e0;
+  color: #192638;
   font-family: 'Inter', sans-serif;
 }
+
+/* ── Header bar ── */
 .presenter-header {
-  background: #0a1420;
-  border-bottom: 1px solid #1a2d42;
-  padding: 1rem 2rem;
+  background: #FFFFFF;
+  border-bottom: 2px solid #DAE5F2;
+  padding: 0.9rem 2rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  box-shadow: 0 2px 10px rgba(21,101,192,0.08);
 }
 .presenter-header h1 {
-  font-size: 0.9rem; font-weight: 700; letter-spacing: 2px;
-  text-transform: uppercase; color: #ef5350;
+  font-size: 0.95rem; font-weight: 800; letter-spacing: 2px;
+  text-transform: uppercase; color: #C62828;
 }
 .presenter-header .live-badge {
-  background: #ef5350; color: #fff; font-size: 0.7rem; font-weight: 700;
-  padding: 3px 10px; border-radius: 20px; animation: pulse-badge 2s infinite;
+  background: #D32F2F; color: #fff; font-size: 0.72rem; font-weight: 700;
+  padding: 4px 14px; border-radius: 20px; animation: pulse-badge 2s infinite;
+  box-shadow: 0 2px 8px rgba(211,47,47,0.35);
 }
 @keyframes pulse-badge { 0%,100% { opacity:1; } 50% { opacity:0.55; } }
 
+/* ── Scenario presets bar ── */
+.p-scenarios-bar {
+  background: #F4F8FE !important;
+  border-bottom: 1px solid #DAE5F2 !important;
+}
+.p-scenarios-bar .p-scenarios-label {
+  font-size: 0.75rem; color: #6D89A5; text-transform: uppercase;
+  letter-spacing: 1px; font-weight: 700;
+}
+.p-scenarios-bar .p-note {
+  font-size: 0.75rem; color: #8ba4ba; margin-left: 0.5rem;
+}
+
+/* ── Formula bar ── */
+.p-formula-bar {
+  background: #FAFCFF !important;
+  border-bottom: 1px solid #DAE5F2 !important;
+  color: #6D89A5 !important;
+}
+
+/* ── Panels grid ── */
 .presenter-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  padding: 1rem 1.5rem;
+  gap: 1.1rem;
+  padding: 1.1rem 1.5rem;
 }
 @media (max-width: 900px) { .presenter-grid { grid-template-columns: 1fr; } }
 
-.p-panel { background: #0d1a25; border: 1px solid #1a2d42; border-radius: 10px; padding: 1.2rem; }
-.p-panel-header {
-  font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 1.5px; padding: 6px 12px; border-radius: 6px; margin-bottom: 1rem;
+.p-panel {
+  background: #FFFFFF;
+  border: 1.5px solid #DAE5F2;
+  border-radius: 12px;
+  padding: 1.4rem;
+  box-shadow: 0 2px 14px rgba(21,101,192,0.06);
 }
-.p-header-low    { background: rgba(46,125,50,0.14);  color: #66bb6a; }
-.p-header-medium { background: rgba(245,127,23,0.14); color: #ffa726; }
-.p-header-high   { background: rgba(183,28,28,0.14);  color: #ef5350; }
+.p-panel-header {
+  font-size: 0.82rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 1.5px; padding: 9px 14px; border-radius: 8px; margin-bottom: 1.1rem;
+}
+.p-header-low    { background: #E8F5E9; color: #2E7D32; border: 1px solid #C8E6C9; }
+.p-header-medium { background: #FFF3E0; color: #BF360C; border: 1px solid #FFCC80; }
+.p-header-high   { background: #FFEBEE; color: #C62828; border: 1px solid #FFCDD2; }
 
-/* Toggles */
+/* ── Toggle rows ── */
 .toggle-row {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 0; border-bottom: 1px solid #1a2d42;
+  padding: 11px 0; border-bottom: 1px solid #EDF3FC;
 }
 .toggle-row:last-child { border-bottom: none; }
-.toggle-label { font-size: 0.81rem; color: #c0d0e0; }
-.toggle-switch { position: relative; width: 44px; height: 24px; }
+.toggle-label { font-size: 1rem; color: #192638; font-weight: 500; line-height: 1.4; }
+
+/* Larger toggle switch */
+.toggle-switch { position: relative; width: 52px; height: 28px; flex-shrink: 0; }
 .toggle-switch input { opacity: 0; width: 0; height: 0; }
 .toggle-slider {
-  position: absolute; inset: 0; background: #1e3248;
-  border-radius: 24px; cursor: pointer; transition: background 0.25s;
+  position: absolute; inset: 0; background: #C8D8EC;
+  border-radius: 28px; cursor: pointer; transition: background 0.25s;
 }
 .toggle-slider::before {
-  content: ''; position: absolute; width: 18px; height: 18px;
-  left: 3px; bottom: 3px; background: #8ba4ba; border-radius: 50%;
-  transition: transform 0.25s, background 0.25s;
+  content: ''; position: absolute; width: 22px; height: 22px;
+  left: 3px; bottom: 3px; background: #fff; border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.20);
+  transition: transform 0.25s;
 }
-.toggle-switch input:checked + .toggle-slider { background: #1a6b3c; }
-.toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); background: #66bb6a; }
-.toggle-switch.danger input:checked + .toggle-slider { background: #6b1a1a; }
-.toggle-switch.danger input:checked + .toggle-slider::before { background: #ef5350; }
+.toggle-switch input:checked + .toggle-slider              { background: #2E7D32; }
+.toggle-switch input:checked + .toggle-slider::before     { transform: translateX(24px); }
+.toggle-switch.danger input:checked + .toggle-slider      { background: #D32F2F; }
+.toggle-switch.danger input:checked + .toggle-slider::before { transform: translateX(24px); }
 
-/* Indicators (read-only) */
+/* ── Auto-detected indicators ── */
 .indicator-row {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 0; border-bottom: 1px solid #1a2d42;
+  padding: 10px 0; border-bottom: 1px solid #EDF3FC;
+}
+/* Override inline styles on indicator labels */
+.indicator-row .toggle-label {
+  font-size: 0.92rem !important;
+  color: #3B5270 !important;
+  font-weight: 500 !important;
 }
 .indicator-dot {
-  width: 10px; height: 10px; border-radius: 50%; background: #1e3248;
+  width: 13px; height: 13px; border-radius: 50%;
+  background: #C8D8EC; border: 2px solid #DAE5F2;
   transition: background 0.3s, box-shadow 0.3s; flex-shrink: 0;
 }
-.indicator-dot.active { background: #ffa726; box-shadow: 0 0 8px #ffa726; }
+.indicator-dot.active {
+  background: #F57C00; border-color: #FFB74D;
+  box-shadow: 0 0 10px rgba(245,124,0,0.45);
+}
 
-/* Sliders */
-.slider-row { padding: 8px 0; border-bottom: 1px solid #1a2d42; }
-.slider-row label { font-size: 0.81rem; color: #c0d0e0; display: flex; justify-content: space-between; }
-.slider-row input[type=range] { width: 100%; margin-top: 6px; accent-color: #ffa726; }
-.slider-val { color: #ffa726; font-weight: 700; }
+/* ── Auto-detected section sub-header override ── */
+.p-panel .p-auto-header {
+  font-size: 0.68rem; color: #6D89A5; text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 0.6rem; font-weight: 700;
+}
 
-/* Dropdown */
+/* ── Sliders ── */
+.slider-row { padding: 11px 0; border-bottom: 1px solid #EDF3FC; }
+.slider-row label {
+  font-size: 1rem; color: #192638; font-weight: 500;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.slider-row input[type=range] {
+  width: 100%; margin-top: 8px; accent-color: #1565C0; height: 6px; cursor: pointer;
+}
+.slider-row .slider-hint {
+  font-size: 0.72rem; color: #8ba4ba; margin-top: 3px;
+}
+.slider-val { color: #1565C0; font-weight: 700; }
+
+/* ── IP dropdown ── */
 .select-row {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 0; border-bottom: 1px solid #1a2d42;
+  padding: 11px 0; border-bottom: 1px solid #EDF3FC; gap: 1rem;
 }
-.select-row label { font-size: 0.81rem; color: #c0d0e0; }
+.select-row label { font-size: 1rem; color: #192638; font-weight: 500; white-space: nowrap; }
 .select-row select {
-  background: #0d1b2a; border: 1px solid #1e3248; color: #c0d0e0;
-  padding: 4px 8px; border-radius: 6px; font-size: 0.79rem; font-family: inherit;
+  background: #F4F8FE; border: 1.5px solid #CDD9EC; color: #192638;
+  padding: 6px 12px; border-radius: 8px; font-size: 0.9rem;
+  font-family: inherit; font-weight: 500; cursor: pointer;
+  transition: border-color 0.18s;
 }
+.select-row select:focus { outline: none; border-color: #1565C0; }
 
-/* Presenter bottom bar */
+/* ── Bottom action bar ── */
 .presenter-bottom {
-  padding: 0.9rem 1.5rem; background: #0a1420; border-top: 1px solid #1a2d42;
-  display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap;
+  padding: 1rem 1.5rem;
+  background: #FFFFFF;
+  border-top: 2px solid #DAE5F2;
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  box-shadow: 0 -2px 12px rgba(21,101,192,0.06);
 }
 .p-btn {
-  padding: 9px 22px; border-radius: 8px; font-size: 0.86rem; font-weight: 700;
+  padding: 10px 24px; border-radius: 9px; font-size: 0.9rem; font-weight: 700;
   cursor: pointer; border: none; font-family: inherit; transition: all 0.18s;
+  letter-spacing: 0.1px;
 }
-.p-btn-apply { background: var(--blue); color: #fff; }
-.p-btn-apply:hover { background: var(--blue2); }
-.p-btn-reset { background: #1e3248; color: #8ba4ba; }
-.p-btn-reset:hover { background: #243d56; color: #fff; }
+.p-btn-apply {
+  background: var(--blue); color: #fff;
+  box-shadow: 0 2px 10px rgba(21,101,192,0.28);
+}
+.p-btn-apply:hover { background: var(--blue2); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(21,101,192,0.36); }
+.p-btn-reset {
+  background: #EEF3FB; color: #6D89A5;
+  border: 1.5px solid #DAE5F2;
+}
+.p-btn-reset:hover { background: #DAE5F2; color: #192638; }
 .presenter-gauge { display: flex; align-items: center; gap: 1.5rem; flex: 1; justify-content: flex-end; }
-.p-live-label { font-size: 0.68rem; color: #8ba4ba; text-transform: uppercase; letter-spacing: 1px; }
+.p-live-label {
+  font-size: 0.72rem; color: #6D89A5; text-transform: uppercase;
+  letter-spacing: 1px; font-weight: 700;
+}
 
 /* ════════════════════════════════════════════
    SCROLLBAR
