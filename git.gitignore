@@ -1,0 +1,49 @@
+# ==========================================
+# Python Core & Virtual Environments
+# ==========================================
+venv/
+ENV/
+env/
+.env
+.venv
+bin/
+lib/
+include/
+share/
+
+# ==========================================
+# Python Bytecode and Cache (Prevents sync conflicts)
+# ==========================================
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ==========================================
+# Local Relational & ML Model Data
+# ==========================================
+# Ignore active local transactional data databases
+db.sqlite3
+
+# Ignore saved, generated, or temporary model artifacts if you regenerate them locally
+# *.joblib
+# *.pkl
+
+# ==========================================
+# Front-End and Editor Configurations
+# ==========================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ==========================================
+# Load Test & Background Server Artifacts
+# ==========================================
+*.log
+flask_session/

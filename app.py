@@ -3,12 +3,15 @@ import os
 import random
 import sqlite3
 import time
+import uuid
 import warnings
 from datetime import datetime, timedelta
 
 import joblib
 import numpy as np
 from flask import Flask, jsonify, redirect, render_template, request, session, url_for
+
+from telemetry_tracker import Action, FraudLogger, Resolution
 
 warnings.filterwarnings("ignore")
 
@@ -33,6 +36,9 @@ FEATURE_ORDER = [
 ]
 
 DB_PATH = "db.sqlite3"
+
+# ── Telemetry ──────────────────────────────────────────────────────────────────
+FRAUD_LOGGER = FraudLogger(db_path=DB_PATH, model_version="1.0.0")
 
 
 # ── Database ───────────────────────────────────────────────────────────────────
@@ -348,6 +354,8 @@ def logged_in():
 def ensure_login_time():
     if "login_time" not in session:
         session["login_time"] = time.time()
+    if "session_id" not in session:
+        session["session_id"] = str(uuid.uuid4())
 
 
 # ── Page routes ────────────────────────────────────────────────────────────────
@@ -423,7 +431,27 @@ def api_score():
     signals = triggered_signals_list(feats, ps, sess_signals)
     explanation = generate_explanation(risk_level, signals)
 
+    # ── Telemetry: log the scoring event ──────────────────────────────────────
+    audit_id = str(uuid.uuid4())
+    if risk_level == "high":       action = Action.HIGH_LOCKDOWN
+    elif risk_level == "medium":   action = Action.MEDIUM_STEP_UP
+    else:                          action = Action.LOW_PASS
+
+    # Strip the rule-engine-only key before storing the 27-feature snapshot
+    feature_snapshot = {k: v for k, v in feats.items() if k != "session_from_link"}
+
+    FRAUD_LOGGER.log_score_event(
+        transaction_id  = audit_id,
+        user_id         = session.get("user_id", 1),
+        session_id      = session.get("session_id", "unknown"),
+        features        = feature_snapshot,
+        predicted_score = risk_score,
+        action          = action,
+        amount          = amount,
+    )
+
     return jsonify({
+        "audit_id":          audit_id,
         "risk_score":        risk_score,
         "risk_level":        risk_level,
         "explanation":       explanation,
@@ -456,6 +484,20 @@ def api_transfer():
         ).fetchone()[0])
     conn.commit()
     conn.close()
+
+    # ── Telemetry: close the audit loop ───────────────────────────────────────
+    audit_id = data.get("audit_id")
+    if audit_id:
+        resolution = Resolution.from_transfer(
+            status     = status,
+            risk_level = data.get("risk_level", "low"),
+            method     = data.get("resolution_method"),
+        )
+        FRAUD_LOGGER.update_resolution(
+            transaction_id = audit_id,
+            resolution     = resolution,
+        )
+
     return jsonify({"success": True, "new_balance": new_balance})
 
 
@@ -615,6 +657,32 @@ def api_clear_history():
                 "session_from_link", "unknown_iban"):
         session.pop(key, None)
     return jsonify({"success": True})
+
+
+# ── Audit API endpoints ────────────────────────────────────────────────────────
+@app.route("/api/audit/recent")
+def api_audit_recent():
+    """Last N audit rows (newest first). Use ?limit=N to override default 50."""
+    limit = min(int(request.args.get("limit", 50)), 500)
+    rows = FRAUD_LOGGER.get_recent(limit=limit)
+    return jsonify({"rows": rows, "count": len(rows)})
+
+
+@app.route("/api/audit/summary")
+def api_audit_summary():
+    """Aggregate statistics for the audit log and runtime queue health."""
+    return jsonify(FRAUD_LOGGER.summary_stats())
+
+
+@app.route("/api/audit/training-batch")
+def api_audit_training_batch():
+    """
+    Export closed-loop labelled samples ready for XGBoost retraining.
+    ?resolved_only=0 includes rows with NULL resolution (use with care).
+    """
+    resolved_only = request.args.get("resolved_only", "1") != "0"
+    batch = FRAUD_LOGGER.get_ml_training_batch(resolved_only=resolved_only)
+    return jsonify({"samples": batch, "count": len(batch)})
 
 
 if __name__ == "__main__":

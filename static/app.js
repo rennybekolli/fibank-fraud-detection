@@ -24,6 +24,7 @@ let pendingTransfer       = null;
 let accountLocked         = false;
 let lockCountdownInterval = null;
 let mediumAuthDone        = false;   // set true after any biometric auth passes
+let mediumAuthMethod      = null;    // last auth method used ('faceid','touchid',etc.)
 let ibanFromDropdown      = false;   // true when IBAN filled via address-book dropdown
 let knownIBANs            = new Set();
 
@@ -318,6 +319,7 @@ function initTransferButton() {
       const result = await res.json();
 
       pendingTransfer = {
+        audit_id:          result.audit_id,
         amount,
         recipient_name:    recipientName,
         recipient_iban:    recipientIban,
@@ -442,6 +444,8 @@ window.switchAuthTab = function (method, btn) {
 
 /* ── Simulate biometric auth (Face ID / Touch ID / Passkey / Push) ── */
 window.simulateAuth = async function (method) {
+  mediumAuthMethod = method;   // capture for resolution logging
+
   // Hide panel content, show spinner
   ['faceid','touchid','passkey','push'].forEach(m => {
     const p = document.getElementById('auth-' + m);
@@ -523,7 +527,8 @@ window.completeIdVerify = async function () {
   btn.innerHTML = '<span class="btn-spinner"></span>Verifying…';
   btn.disabled  = true;
   await new Promise(r => setTimeout(r, 1200));
-  mediumAuthDone = true;
+  mediumAuthDone   = true;
+  mediumAuthMethod = 'id_card';   // capture for resolution logging
   const badge = document.getElementById('auth-verified-badge');
   if (badge) badge.classList.add('visible');
   document.getElementById('verify-btn').disabled = false;
@@ -542,7 +547,7 @@ window.completeMediumVerify = async function () {
   closeModal('modal-medium');
   document.body.classList.remove('risk-medium');
 
-  const r = await saveTransfer('completed');
+  const r = await saveTransfer('completed', mediumAuthMethod);
   if (r?.new_balance != null) {
     document.getElementById('balance').textContent         = formatALL(r.new_balance);
     document.getElementById('new-balance-low').textContent = formatALL(r.new_balance);
@@ -630,12 +635,16 @@ async function triggerLockdown() {
 /* ═══════════════════════════════════════════════════════════════
    SAVE TRANSFER
 ═══════════════════════════════════════════════════════════════ */
-async function saveTransfer(status) {
+async function saveTransfer(status, resolutionMethod = null) {
   if (!pendingTransfer) return null;
   try {
     const res = await fetch('/api/transfer', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...pendingTransfer, status }),
+      body: JSON.stringify({
+        ...pendingTransfer,
+        status,
+        ...(resolutionMethod ? { resolution_method: resolutionMethod } : {}),
+      }),
     });
     return await res.json();
   } catch (e) { console.error('saveTransfer:', e); return null; }
@@ -679,6 +688,7 @@ function resetTransferForm() {
   passwordTotalMs  = 0;
   passwordFocusTime = null;
   pendingTransfer  = null;
+  mediumAuthMethod = null;
   ibanFromDropdown = false;
   const btn = document.getElementById('transfer-btn');
   if (btn) { btn.disabled = false; btn.textContent = 'Transfer Funds →'; }
