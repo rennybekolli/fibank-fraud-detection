@@ -3,6 +3,8 @@
 
 Presentation Link
 (https://docs.google.com/presentation/d/1E_EcnwIikkUiIqFsS3_Bg0HFS0AoRGoGr5SslYc3UbM/edit?slide=id.p3#slide=id.p3)
+[Fibank_Fraud_Detection_Whitepaper.docx](https://github.com/user-attachments/files/28195918/Fibank_Fraud_Detection_Whitepaper.docx)
+
 
 ### Real-Time Behavioural Risk Engine for Digital Banking
 
