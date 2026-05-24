@@ -1,166 +1,314 @@
-🛡️ Fibank Intelligent Fraud Detection SystemA Real-Time Behavioural Risk Engine for Digital Banking Award-Winning Hackathon Submission · Tirana, Albania
-The Fibank Intelligent Fraud Detection System is a lightweight, high-performance, real-time multi-signal behavioral risk engine. 
-It is explicitly engineered to intercept Authorised Push Payment (APP) fraud, social engineering (vishing/coaching), remote-desktop takeovers, and automated bot-driven transfers before 
-funds leave the bank account.Instead of evaluating a transaction solely by static data points (such as login credentials or fixed geographic IPs), 
-this system monitors session-wide user interaction telemetry—transforming micro-movements, device signatures, and hardware API indicators into a live behavioral fingerprint.
-🏗️ System ArchitectureThe system operates on a dual-engine architecture designed for sub-millisecond inference and absolute reliability. 
-It processes incoming telemetry via parallel paths: a high-speed deterministic rule engine and a gradient-boosted machine learning model.
+# 🛡️ Fibank Intelligent Fraud Detection System
 
-              [User Web Interface] ──(JSON Telemetry)──> [Flask API Endpoint]
-                                                 │
-                        ┌────────────────────────┴────────────────────────┐
-                        ▼                                                 ▼
-          [Deterministic Rule Engine]                          [XGBoost Scoring Engine]
-         (High-speed branching logic)                         (27-Dimension Feature Vector)
-                        │                                                 │
-                        └────────────────────────┬────────────────────────┘
-                                                 ▼
-                                     [Continuous Trust Score]
-                                                 │
-         ┌───────────────────────────────────────┼───────────────────────────────────────┐
-         ▼                                       ▼                                       ▼
-    🟢 LOW RISK                             🟡 MEDIUM RISK                           🔴 HIGH RISK
-   Score < 3.0                              Score 3.0 - 6.99                         Score ≥ 7.0
-(Frictionless Path)                      (Biometric Step-Up)                     (FIDO Hardware Lock)
+### Real-Time Behavioural Risk Engine for Digital Banking
 
+**Award-Winning Hackathon Submission · Tirana, Albania**
 
-🛠️ Tech Stack & Design Choices
+The **Fibank Intelligent Fraud Detection System** is a lightweight, high-performance behavioural risk engine designed for real-time fraud prevention in digital banking environments.
 
-The prototype intentionally avoids heavyweight enterprise frameworks such as React, Docker, or distributed microservices in order to optimize for:
+The platform is specifically engineered to detect and intercept:
 
-Raw execution speed
-Minimal network serialization overhead
-Localized state processing
-Instantaneous UI responsiveness
-Backend
-Python 3.x
-Flask — lightweight, low-overhead REST API routing
-Machine Learning
-XGBoost Classifier via scikit-learn
-Serialized using joblib
-Database Layer
-SQLite (db.sqlite3)
-Zero-latency localized relational state storage
-Frontend
-Vanilla JavaScript (ES2020)
-Custom CSS3
-No build pipelines or frontend abstraction layers
-📊 The 27 Behavioral Signals
+* Authorised Push Payment (APP) fraud
+* Social engineering attacks (vishing/coaching)
+* Remote desktop account takeovers
+* Automated bot-driven transactions
 
-Telemetry is grouped into four distinct layers of situational intelligence that feed the XGBoost inference vector.
+Unlike traditional fraud systems that rely heavily on static identifiers such as passwords or IP addresses, this platform continuously evaluates live behavioural telemetry throughout the user session.
 
-I. Device & Environment Intelligence
-device_id / os_type / browser_type
+Micro-interactions, device signatures, environmental anomalies, and hardware-level indicators are transformed into a continuously evolving behavioural trust profile before funds leave the account.
+
+---
+
+# 🏗️ System Architecture
+
+The platform operates on a dual-engine architecture optimized for:
+
+* Sub-millisecond inference
+* Deterministic reliability
+* Minimal processing overhead
+* Real-time adaptive intervention
+
+Incoming telemetry is processed simultaneously through:
+
+1. A deterministic rule engine
+2. A machine-learning scoring engine
+
+```text
+              [User Web Interface]
+                       │
+             (JSON Telemetry Stream)
+                       │
+                       ▼
+               [Flask API Endpoint]
+                       │
+        ┌──────────────┴──────────────┐
+        ▼                             ▼
+[Deterministic Rule Engine]   [XGBoost Scoring Engine]
+ (Fast branching logic)        (27D Feature Vector)
+        │                             │
+        └──────────────┬──────────────┘
+                       ▼
+             [Continuous Trust Score]
+                       │
+    ┌──────────────────┼──────────────────┐
+    ▼                  ▼                  ▼
+
+ 🟢 LOW RISK      🟡 MEDIUM RISK      🔴 HIGH RISK
+   Score < 3.0      Score 3.0–6.99      Score ≥ 7.0
+
+ Frictionless       Biometric           FIDO2 Hardware
+    Approval          Step-Up               Lockdown
+```
+
+---
+
+# 🛠️ Tech Stack & Design Choices
+
+The prototype intentionally avoids heavyweight enterprise frameworks such as React, Docker, or distributed microservices in order to prioritize:
+
+* Raw execution speed
+* Minimal serialization overhead
+* Localized state execution
+* Reduced latency
+* Instant UI responsiveness
+
+---
+
+## Backend
+
+* **Python 3.x**
+* **Flask** — lightweight REST API routing with minimal overhead
+
+---
+
+## Machine Learning
+
+* **XGBoost Classifier**
+* Built with `scikit-learn`
+* Serialized using `joblib`
+
+---
+
+## Database Layer
+
+* **SQLite (`db.sqlite3`)**
+* Localized relational state storage with near-zero operational overhead
+
+---
+
+## Frontend
+
+* **Vanilla JavaScript (ES2020)**
+* **Custom CSS3**
+* No frontend frameworks
+* No build pipelines
+* Instant asset delivery
+
+---
+
+# 📊 Behavioural Intelligence Signals
+
+Telemetry is grouped into four layers of situational intelligence that collectively feed the XGBoost feature vector.
+
+---
+
+## I. Device & Environment Intelligence
+
+### `device_id / os_type / browser_type`
 
 Environment fingerprinting and client profiling.
 
-is_vm_or_emulator
+### `is_vm_or_emulator`
 
-Detection of virtualized environments, server racks, or sandbox execution layers.
+Detection of virtualized environments, sandbox execution layers, or server-rack activity.
 
-timezone_mismatch
+### `timezone_mismatch`
 
-Real-time comparison between browser-local timezone and incoming GeoIP region.
+Compares browser-local timezone against incoming GeoIP origin.
 
-II. Interaction & Behavioral Biometrics
-typing_cadence_score
+---
 
-Micro-variations in keystroke flight and dwell timing used to distinguish humans from automated scripts.
+## II. Interaction & Behavioural Biometrics
 
-mouse_linearity_score
+### `typing_cadence_score`
 
-Mathematical path analysis separating organic curved pointer movement from bot-like linear vectors.
+Analyzes keystroke flight and dwell timing to distinguish organic human input from scripted automation.
 
-password_paste_detected
+### `mouse_linearity_score`
 
-Binary signal identifying clipboard injection instead of manual credential entry.
+Uses path curvature analysis to separate natural pointer movement from linear bot trajectories.
 
-III. Transaction Context Intelligence
-transfer_amount_lek
+### `password_paste_detected`
 
-Anomaly scaling against historical user transfer baselines.
+Flags clipboard-based credential injection instead of manual typing.
 
-payee_account_age_hours
+---
 
-Flags newly created beneficiary or potential money-mule accounts.
+## III. Transaction Context Intelligence
 
-is_neobank_routing
+### `transfer_amount_lek`
 
-Routing assessment for digital-only banking destinations.
+Detects anomalous transfer amounts against historical user baselines.
 
-IV. Sociotechnical & Social Engineering Intelligence
-is_call_active / call_overlap_transfer
+### `payee_account_age_hours`
 
-Monitors native hardware state to identify active phone calls during fund transfers.
+Flags newly created beneficiary accounts commonly associated with money-mule activity.
 
-screen_recording_detected / remote_access_app_detected
+### `is_neobank_routing`
 
-Detects media projection hooks and remote-control overlays such as AnyDesk or TeamViewer.
+Assesses digital-only routing destinations and elevated-risk transfer corridors.
 
-🔐 Three-Tier Risk Intervention
+---
 
-Security dynamically escalates based on the calculated session threat level.
-Friction is introduced only when anomalous behavior is detected.
+## IV. Sociotechnical & Social Engineering Intelligence
 
-Risk State	Score Window	Action Triggered	End-User Experience
-🟢 LOW	0.00 – 2.99	Passive Trust	Transfer executes instantly with frictionless processing
-🟡 MEDIUM	3.00 – 6.99	Biometric Step-Up	Triggers WebAuthn/Passkey or native biometrics (Face ID / Touch ID)
-🔴 HIGH	7.00 – 10.00	Hardware Lockdown	Requires physical FIDO2 security key and activates full-screen shielding
+### `is_call_active / call_overlap_transfer`
 
-🚀 Getting Started
+Detects active phone calls occurring during sensitive transfer activity.
 
-Prerequisites
-Python 3.8 or higher
-pip (Python package manager)
-Installation & Local Setup
+### `screen_recording_detected / remote_access_app_detected`
 
-Clone the Repository
+Identifies screen-sharing hooks and remote-control overlays such as:
+
+* AnyDesk
+* TeamViewer
+* Remote desktop tooling
+
+---
+
+# 🔐 Three-Tier Risk Intervention
+
+Security intervention dynamically escalates based on the calculated trust score.
+
+Friction is introduced only when anomalous behaviour is detected.
+
+| Risk Level    | Score Range    | Action            | User Experience                                                     |
+| ------------- | -------------- | ----------------- | ------------------------------------------------------------------- |
+| 🟢 **LOW**    | `0.00 – 2.99`  | Passive Trust     | Instant frictionless transaction approval                           |
+| 🟡 **MEDIUM** | `3.00 – 6.99`  | Biometric Step-Up | WebAuthn / Passkey / Face ID / Touch ID verification                |
+| 🔴 **HIGH**   | `7.00 – 10.00` | Hardware Lockdown | Requires physical FIDO2 security key and activates secure shielding |
+
+---
+
+# 🚀 Getting Started
+
+## Prerequisites
+
+* Python 3.8+
+* `pip` package manager
+
+---
+
+# Installation & Local Setup
+
+## Clone the Repository
+
+```bash
 git clone <repository-url>
 cd fibank-fraud-detection
+```
 
-Create and Activate a Virtual Environment
+---
+
+## Create a Virtual Environment
+
+```bash
 python -m venv venv
-Windows
+```
+
+### Windows
+
+```bash
 venv\Scripts\activate
-macOS / Linux
+```
+
+### macOS / Linux
+
+```bash
 source venv/bin/activate
+```
 
-Install Dependencies
+---
+
+## Install Dependencies
+
+```bash
 pip install -r requirements.txt
+```
 
-Initialize the Database
+---
+
+## Initialize the Database
+
+```bash
 python init_db.py
+```
 
-This maps the localized SQLite schema.
+Initializes and maps the localized SQLite schema.
 
-Launch the Application
+---
+
+## Launch the Application
+
+```bash
 python app.py
+```
 
 Open your browser and navigate to:
 
+```text
 http://127.0.0.1:5000
+```
 
-You will see the interactive dashboard and threat injector control panel.
+You will be presented with the interactive dashboard and threat-injection control panel.
 
-📜 Regulatory Alignment & Compliance
-PSD2 / Regulatory Technical Standards (RTS)
+---
 
-Aligns with Articles 97 and 18 requirements for Strong Customer Authentication (SCA) through real-time transaction monitoring and adaptive authentication flows.
+# 📜 Regulatory Alignment & Compliance
 
-GDPR
+## PSD2 / RTS Compliance
 
-Behavioral biometrics such as keystroke timing and mouse trajectories are processed exclusively in volatile memory during active sessions.
+Aligned with Articles 97 and 18 of the PSD2 Regulatory Technical Standards for Strong Customer Authentication (SCA).
 
-Raw coordinate arrays and timing vectors are discarded immediately after inference and are never persisted to the relational database.
+The system implements:
 
-Bank of Albania Compliance
+* Real-time transaction monitoring
+* Adaptive authentication escalation
+* Behaviour-driven trust evaluation
 
-Respects the Regulation on Electronic Payment Instruments through:
+---
 
-Auditable transaction trails
-Human-explainable fraud decisions
-Transparent intervention logic for frozen or challenged transactions
-📄 License
+## GDPR Compliance
 
-This project is licensed under the MIT / FiBank / Team Ace License.
-See the LICENSE file for complete details.
+Behavioural biometric telemetry such as:
+
+* Keystroke timing
+* Pointer trajectories
+* Interaction cadence
+
+is processed exclusively in volatile memory during active sessions.
+
+Raw telemetry arrays are discarded immediately after inference and are never persisted to the relational database.
+
+---
+
+## Bank of Albania Compliance
+
+Designed to comply with the Regulation on Electronic Payment Instruments through:
+
+* Auditable transaction trails
+* Human-explainable fraud scoring
+* Transparent intervention pathways
+* Reviewable frozen-transaction logic
+
+---
+
+# 📄 License
+
+This project is licensed under the:
+
+* MIT License
+* FiBank Internal Evaluation License
+* Team Ace Hackathon License
+
+See the `LICENSE` file for complete details.
