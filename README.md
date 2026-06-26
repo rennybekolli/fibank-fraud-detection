@@ -1,5 +1,24 @@
 # 🛡️ Fibank Intelligent Fraud Detection System (16 HR CIT Hackathon)
 
+**Team Ace – 1st Place Winner** · Tirana, Albania
+
+## 👨‍💻 My Contributions (Reni Bekolli)
+
+As a core member of Team Ace, I was responsible for the machine learning pipeline and feature engineering that powered the system's real-time fraud detection capabilities. My specific contributions include:
+
+- **Feature Engineering** – Designed 12+ behavioral features (session tension, mule potential, coached fraud index) that captured complex fraud signals across device, behavioral, and transaction layers
+
+- **XGBoost Pipeline** – Built and tuned the XGBoost classifier with `scale_pos_weight` to handle class imbalance, achieving real-time inference (sub-1ms latency)
+
+- **SHAP Explainability** – Implemented SHAP for model transparency and regulatory compliance (PSD2/GDPR), enabling audit-ready fraud predictions
+
+- **Risk Framework** – Designed the three-tier risk escalation framework (Low/Medium/High) with adaptive intervention strategies based on model confidence
+
+- **Model Serialization** – Serialized the trained model using `joblib` for production deployment
+
+- **System Architecture** – Contributed to the dual-engine architecture design (deterministic rules + XGBoost scoring)
+
+---
 
 Presentation Link
 (https://docs.google.com/presentation/d/1E_EcnwIikkUiIqFsS3_Bg0HFS0AoRGoGr5SslYc3UbM/edit?slide=id.p3#slide=id.p3)
